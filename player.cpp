@@ -327,12 +327,6 @@ void UpdatePlayer(void)
 		SetMotionType(MOTIONTYPE_JUMP, true, 10);
 	}
 
-	/*** リセット処理 ***/
-	if (GetKeyboardTrigger(DIK_BACKSPACE))
-	{
-		SetBullet(g_player.pos, g_player.rot, 2.5f);
-	}
-
 	/*** アクション！ ***/
 	if (GetKeyboardTrigger(DIK_RETURN)
 		&& g_player.motionType != MOTIONTYPE_JUMP
