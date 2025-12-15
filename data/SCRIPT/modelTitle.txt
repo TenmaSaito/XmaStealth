@@ -1,0 +1,534 @@
+#==============================================================================
+#
+# モデル設置スクリプトファイル [model.txt]
+# Author : TENMA SAITO
+#
+#==============================================================================
+SCRIPT		# 消すな
+
+#=================================================
+# 読み込むテクスチャファイル数
+#=================================================
+NUM_TEXTURE = 18
+
+#=================================================
+# テクスチャパス
+#=================================================
+TEXTURE_FILENAME = data/TEXTURE/field000.jpg		# [0]地面テクスチャ
+TEXTURE_FILENAME = data/TEXTURE/field001.jpg		# [1]地面テクスチャ
+TEXTURE_FILENAME = data/TEXTURE/field002.jpg		# [2]地面テクスチャ
+TEXTURE_FILENAME = data/TEXTURE/wall000.jpg			# [3]壁テクスチャ
+TEXTURE_FILENAME = data/TEXTURE/wall001.jpg			# [4]壁テクスチャ
+TEXTURE_FILENAME = data/TEXTURE/wall002.jpg			# [5]壁テクスチャ
+TEXTURE_FILENAME = data/TEXTURE/wall100.jpg			# [6]壁テクスチャ
+TEXTURE_FILENAME = data/TEXTURE/fence000.png		# [7]フェンステクスチャ
+TEXTURE_FILENAME = data/TEXTURE/river000.jpg		# [8]川テクスチャ
+TEXTURE_FILENAME = data/TEXTURE/Tree000.png			# [9]木テクスチャ
+TEXTURE_FILENAME = data/TEXTURE/ball000.png			# [10]弾テクスチャ
+TEXTURE_FILENAME = data/TEXTURE/explosion000.png	# [11]爆発アニメーションテクスチャ
+TEXTURE_FILENAME = data/TEXTURE/shadow000.jpg		# [12]エフェクト兼影テクスチャ
+TEXTURE_FILENAME = data/TEXTURE/flooring000.jpg		# [13]フローリングテクスチャ
+TEXTURE_FILENAME = data/TEXTURE/HouseWall000.jpg	# [14]家の壁テクスチャ
+TEXTURE_FILENAME = data/TEXTURE/ChildWall000.jpg	# [15]子供壁テクスチャ
+TEXTURE_FILENAME = data/TEXTURE/Carpet.jpg			# [16]カーペットテクスチャ
+TEXTURE_FILENAME = data/TEXTURE/sky000.jpg			# [17]ソラ
+
+#=================================================
+# 読み込むモデル数
+#================================================
+NUM_MODEL = 27
+
+#=================================================
+# Xファイルのパス
+#=================================================
+MODEL_FILENAME = data/MODEL/Object/child_Table.x			# [0] 子供用勉強机
+MODEL_FILENAME = data/MODEL/Object/closet.x					# [1] クローゼット
+MODEL_FILENAME = data/MODEL/Object/aircon.x					# [2] エアコン
+MODEL_FILENAME = data/MODEL/Object/human_false_Cushion.x	# [3] 人をダメにするクッション
+MODEL_FILENAME = data/MODEL/Object/clock.x					# [4] 時計
+MODEL_FILENAME = data/MODEL/Object/kitchen.x				# [5] キッチン
+MODEL_FILENAME = data/MODEL/Object/table.x					# [6] テーブル
+MODEL_FILENAME = data/MODEL/Object/chair.x					# [7] 椅子
+MODEL_FILENAME = data/MODEL/Object/XmasTree.x				# [8] クリスマスツリー
+MODEL_FILENAME = data/MODEL/Object/Ornament_0.x				# [9] オーナメント
+MODEL_FILENAME = data/MODEL/Object/sofa-.x					# [10] ソファー
+MODEL_FILENAME = data/MODEL/Object/tv-table.x				# [11] TVテーブル
+MODEL_FILENAME = data/MODEL/Object/ornament_box.x			# [12] 仮配置用オーナメント
+MODEL_FILENAME = data/MODEL/Object/freezer.x				# [13] 冷蔵庫
+MODEL_FILENAME = data/MODEL/Object/kitchen_storage.x		# [14] キッチン棚
+MODEL_FILENAME = data/MODEL/Object/childbed.x				# [15] 子供用ベッド
+MODEL_FILENAME = data/MODEL/Object/child_storage.x			# [16] 子供用勉強棚
+MODEL_FILENAME = data/MODEL/Object/tv.x						# [17] テレビ
+MODEL_FILENAME = data/MODEL/Object/book_storage.x			# [18] 本棚
+MODEL_FILENAME = data/MODEL/Object/living_light.x			# [19] リビングの照明
+MODEL_FILENAME = data/MODEL/Object/electronic_range.x		# [20] 電子レンジ付棚
+MODEL_FILENAME = data/MODEL/Object/child_light.x			# [21] 子供部屋照明
+MODEL_FILENAME = data/MODEL/Object/kotatu.x					# [22] こたつ
+MODEL_FILENAME = data/MODEL/Object/CardBoard.x				# [23] 段ボール
+MODEL_FILENAME = data/MODEL/Object/MassageChair.x			# [24] マッサージチェア
+MODEL_FILENAME = data/MODEL/Object/present_box.x			# [25] プレゼントボックス
+MODEL_FILENAME = data/MODEL/Object/cafe_table.x				# [26] カフェテリア風机 
+
+#=================================================
+# 地面(芝生)
+#=================================================
+FIELDSET
+	TEXTYPE = 0
+	POS = 0 -1 0
+	ROT = 0 0 0
+	BLOCK = 100 100
+	SIZE = 50 50
+END_FIELDSET
+
+#=================================================
+# 地面(フローリング)
+#=================================================
+#-------------------------------------------------
+# リビング
+#-------------------------------------------------
+FIELDSET
+	TEXTYPE = 13
+	POS = 0 0 0
+	ROT = 0 0 0
+	BLOCK = 16 20
+	SIZE = 50 50
+	CODENAME = FLOOR
+END_FIELDSET
+
+#-------------------------------------------------
+# がきんちょの部屋
+#-------------------------------------------------
+FIELDSET
+	TEXTYPE = 13
+	POS = 550 0 350
+	ROT = 0 0 0
+	BLOCK = 6 6
+	SIZE = 50 50
+END_FIELDSET
+
+#-------------------------------------------------
+# 玄関
+#-------------------------------------------------
+FIELDSET
+	TEXTYPE = 13
+	POS = 200 0 -750
+	ROT = 0 0 0
+	BLOCK = 8 10
+	SIZE = 50 50
+END_FIELDSET
+
+#-------------------------------------------------
+# 階段
+#-------------------------------------------------
+MESHFIELDSET
+	TEXTYPE = 13
+	POS = 40 61 -50
+	ROT = 331 0 0
+	SIZE = 60 408
+	BLOCK = 20 20
+	CULL = 1
+END_MESHFIELDSET
+
+#=================================================
+# 天井
+#=================================================
+#-------------------------------------------------
+# リビング
+#-------------------------------------------------
+FIELDSET
+	TEXTYPE = 13
+	POS = -175 188 -99
+	ROT = 0 0 0
+	BLOCK = 9 12
+	SIZE = 51 49
+	CULL = 1
+END_FIELDSET
+
+FIELDSET
+	TEXTYPE = 13
+	POS = 76 188 -250
+	ROT = 0 0 0
+	BLOCK = 4 30
+	SIZE = 12 10
+	CULL = 1
+END_FIELDSET
+
+FIELDSET
+	TEXTYPE = 13
+	POS = 76 188 125
+	ROT = 0 0 0
+	BLOCK = 4 4
+	SIZE = 12 35
+	CULL = 1
+END_FIELDSET
+
+#=================================================
+# カーペット
+#=================================================
+FIELDSET
+	TEXTYPE = 16
+	POS = -200 1 300
+	ROT = 0 0 0
+	BLOCK = 25 25
+	SIZE = 10 10
+END_FIELDSET
+
+#=================================================
+# 壁 (家の壁)
+#=================================================
+#-------------------------------------------------
+# リビング
+#-------------------------------------------------
+# 左 ----
+WALLSET
+	TEXTYPE = 14
+	POS = -400 0 0
+	ROT = 0 270 0
+	BLOCK = 20 10
+	SIZE = 50 50
+END_WALLSET
+
+# 右 ----
+WALLSET
+	TEXTYPE = 14
+	POS = 100 0 -100
+	ROT = 0 90 0
+	COL = 1.0 1.0 0.0 1.0
+	BLOCK = 16 10
+	SIZE = 50 50
+END_WALLSET
+
+# 後ろ ----
+WALLSET
+	TEXTYPE = 14
+	POS = -250 0 -400
+	ROT = 0 180 0
+	BLOCK = 20 10
+	SIZE = 50 50
+END_WALLSET
+
+# 正面 ----
+WALLSET
+	TEXTYPE = 14
+	POS = -100 0 500
+	ROT = 0 0 0
+	COL = 1.0 1.0 0.0 1.0
+	BLOCK = 20 10
+	SIZE = 50 50
+END_WALLSET
+
+# 階段側面 ----
+WALLSET
+	TEXTYPE = 14
+	POS = 45 0 -107
+	ROT = 0 90 0
+	COL = 1.0 1.0 0.0 1.0
+	BLOCK = 1 1
+	SIZE = 334 188
+	CULL = 1
+END_WALLSET
+
+# 階段側面 ----
+WALLSET
+	TEXTYPE = 14
+	POS = 52 0 -107
+	ROT = 0 270 0
+	COL = 1.0 1.0 0.0 1.0
+	BLOCK = 1 1
+	SIZE = 334 188
+	CULL = 1
+END_WALLSET
+
+#-------------------------------------------------
+# がきんちょの部屋
+#-------------------------------------------------
+# 右 ----
+WALLSET
+	TEXTYPE = 15
+	POS = 400 0 400
+	ROT = 0 90 0
+	BLOCK = 4 10
+	SIZE = 50 50
+END_WALLSET
+
+# 後ろ ----
+WALLSET
+	TEXTYPE = 15
+	POS = 250 0 300
+	ROT = 0 180 0
+	BLOCK = 6 10
+	SIZE = 50 50
+END_WALLSET
+
+# 正面 ----
+WALLSET
+	TEXTYPE = 15
+	POS = 300 0 500
+	ROT = 0 0 0
+	BLOCK = 6 10
+	SIZE = 50 50
+END_WALLSET
+
+#=================================================
+# モデル設置
+#=================================================
+MODELSET
+	TYPE = 0				# 表示するモデルのタイプ(上から何番目のモデルか)
+	INDEX = -1				# モデルのインデックス(-1 = プレイヤーのXファイル, 0 = エネミーのXファイル, 1 = オブジェクトなどのXファイル)
+	POS = 0 0 0			# モデルの位置 ( X / Y / Z )
+	ROT = 0 0 0				# モデルの角度 ( X / Y / Z )
+	SPD = 0.4				# モデルの移動速度
+END_MODELSET
+
+# キッチン ================================================
+
+# キッチン台 ----
+MODELSET
+	TYPE = 5
+	INDEX = 1
+	POS = -260 0 -200
+	ROT = 0 0 0
+END_MODELSET
+
+# 冷蔵庫 ----
+MODELSET
+	TYPE = 13
+	INDEX = 1
+	POS = -365 0 -365
+	ROT = 0 0 0
+END_MODELSET
+
+# キッチン棚 ----
+MODELSET
+	TYPE = 14
+	INDEX = 1
+	POS = -250 0 -375
+	ROT = 0 0 0
+END_MODELSET
+
+# リビング =====================================
+
+# 椅子0 ----
+MODELSET
+	TYPE = 7
+	INDEX = 1
+	POS = -330 0 20
+	ROT = 0 270 0
+END_MODELSET
+
+# 椅子1 ----
+MODELSET
+	TYPE = 7
+	INDEX = 1
+	POS = -330 0 80
+	ROT = 0 270 0
+	COLLISION = 0
+END_MODELSET
+
+# 椅子2 ----
+MODELSET
+	TYPE = 7
+	INDEX = 1
+	POS = -215 0 20
+	ROT = 0 90 0
+END_MODELSET
+
+# 椅子3 ----
+MODELSET
+	TYPE = 7
+	INDEX = 1
+	POS = -215 0 80
+	ROT = 0 90 0
+END_MODELSET
+
+# ダイニングテーブル ----
+MODELSET
+	TYPE = 6
+	INDEX = 1
+	POS = -270 0 50
+	ROT = 0 0 0
+END_MODELSET
+
+# クリスマスツリー ----
+MODELSET
+	TYPE = 8
+	INDEX = 1
+	POS = 0 0 300
+	ROT = 0 0 0
+END_MODELSET
+
+# ソファー ----
+MODELSET
+	TYPE = 10
+	INDEX = 1
+	POS = -320 0 325
+	ROT = 0 270 0
+END_MODELSET
+
+# 人をダメにするクッション ----
+MODELSET
+	TYPE = 3
+	INDEX = 1
+	POS = -130 10 315
+	ROT = 0 90 0
+END_MODELSET
+
+# テレビ台 ----
+MODELSET
+	TYPE = 11
+	INDEX = 1
+	POS = -200 0 475
+	ROT = 0 0 0
+END_MODELSET
+
+# こたつ ----
+MODELSET
+	TYPE = 22
+	INDEX = 1
+	POS = -200 0 300
+	ROT = 0 0 0
+END_MODELSET
+
+# マッサージチェア----
+MODELSET
+	TYPE = 24
+	INDEX = 1
+	POS = -200 0 200
+	ROT = 0 180 0
+END_MODELSET
+
+# テレビ ----
+MODELSET
+	TYPE = 17
+	INDEX = 1
+	POS = -200 28 475
+	ROT = 0 0 0
+END_MODELSET
+
+# エアコン ----
+MODELSET
+	TYPE = 2
+	INDEX = 1
+	POS = -200 170 490
+	ROT = 0 0 0
+END_MODELSET
+
+# 時計 ----
+MODELSET
+	TYPE = 4
+	INDEX = 1
+	POS = 0 150 490
+	ROT = 0 0 0
+END_MODELSET
+
+# 電子レンジ付き棚 ----
+MODELSET
+	TYPE = 20
+	INDEX = 1
+	POS = -145 0 -375
+	ROT = 0 180 0
+END_MODELSET
+
+# 本棚 ----
+MODELSET
+	TYPE = 18
+	INDEX = 1
+	POS = 75 0 0
+	ROT = 0 90 0
+END_MODELSET
+
+# 本棚 ----
+MODELSET
+	TYPE = 18
+	INDEX = 1
+	POS = 75 0 100
+	ROT = 0 90 0
+END_MODELSET
+
+# 本棚用机 ----
+MODELSET
+	TYPE = 26
+	INDEX = 1
+	POS = 45 0 50
+	ROT = 0 90 0
+END_MODELSET
+
+# 段ボール ----
+MODELSET
+	TYPE = 23
+	INDEX = 1
+	POS = 80 108 100
+	ROT = 0 90 0
+END_MODELSET
+
+# リビングの照明 ----
+MODELSET
+	TYPE = 19
+	INDEX = 1
+	POS = -100 185 0
+	ROT = 0 0 0
+END_MODELSET
+
+# 子供部屋 ======================================
+
+# 子供用ベッド ----
+MODELSET
+	TYPE = 15
+	INDEX = 1
+	POS = 340 0 460
+	ROT = 0 90 0
+END_MODELSET
+
+# プレゼントボックス ----
+MODELSET
+	TYPE = 25
+	INDEX = 1
+	POS = 340 50 460
+	ROT = 0 0 0
+END_MODELSET
+
+# 子供用勉強棚 ----
+MODELSET
+	TYPE = 16
+	INDEX = 1
+	POS = 230 0 330
+	ROT = 0 0 0
+END_MODELSET
+
+# 子供用勉強机 ----
+MODELSET
+	TYPE = 0
+	INDEX = 1
+	POS = 170 0 330
+	ROT = 0 180 0
+END_MODELSET
+
+# 本棚 ----
+MODELSET
+	TYPE = 18
+	INDEX = 1
+	POS = 325 0 325
+	ROT = 0 180 0
+END_MODELSET
+
+# クローゼット ----
+MODELSET
+	TYPE = 1
+	INDEX = 1
+	POS = 225 0 475
+	ROT = 0 0 0
+END_MODELSET
+
+# 子供部屋の照明 ----
+MODELSET
+	TYPE = 21
+	INDEX = 1
+	POS = 300 185 425
+	ROT = 0 0 0
+END_MODELSET
+
+#=================================================
+# サイズサンプラー
+#=================================================
+
+END_SCRIPT		# 消すな

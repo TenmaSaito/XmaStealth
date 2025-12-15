@@ -1,0 +1,7 @@
+Metasequoia Document
+Format Text Ver 1.0
+
+Material 1 {
+	"mat1" col(0.733 0.392 0.129 1.000) dif(0.800) amb(0.200) emi(0.200) spc(0.800) power(13.00)
+}
+Eof
