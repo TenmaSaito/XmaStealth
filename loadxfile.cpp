@@ -27,7 +27,7 @@
 //*** マクロ定義 ***
 //******************************************************************************************************
 #define MAX_MODEL				(MAX_PLAYER + MAX_ENEMY + MAX_OBJECT)		// 読み込めるモデル最大数
-#define MAX_TEXTURE				(64)				// 読み込めるテクスチャの最大数
+#define MAX_TEXTURE				(128)				// 読み込めるテクスチャの最大数
 #define READ_TEXTURENUM			"NUM_TEXTURE"		// 読み込むテクスチャ数の前文字列
 #define READ_TEXTUREPATH		"TEXTURE_FILENAME"	// テクスチャを読み込む印
 #define READ_MODELNUM			"NUM_MODEL"			// 読み込むモデル数の前文字列
@@ -64,6 +64,7 @@
 #define READ_VANGLE				"VANGLE"			// 視野角
 #define READ_ZN					"ZN"				// 描画開始距離
 #define READ_ZF					"ZF"				// 描画限界距離
+#define READ_ISSTAR				"ISSTAR"			// オーナメントの種類
 #define READ_TYPE				"TYPE"				// 種類
 #define READ_TEXTYPE			"TEXTYPE"			// テクスチャの種類
 #define READ_INDEX				"INDEX"				// インデックス
@@ -94,6 +95,8 @@
 #define READ_RADIUS				"RADIUS"			// 球の当たり判定の半径
 #define READ_HEIGHT				"HEIGHT"			// 上下の当たり判定の大きさ
 #define READ_JUMP				"JUMP"				// 跳躍力
+#define READ_HEAD				"HEAD"				// 頭のインデックスの管理
+#define READ_HAND				"HAND"				// 手のインデックス管理
 #define READ_PARTSSET			"PARTSSET"			// パーツ情報の設定
 #define READ_PARENT				"PARENT"			// パーツの親インデックス
 #define READ_ENDPARTSSET		"END_PARTSSET"		// パーツ情報設定の解除
@@ -115,12 +118,180 @@ bool DeleteComments(char *aStr);
 //****************************************************************************************************************
 //*** グローバル変数 ***
 //****************************************************************************************************************
-LPDIRECT3DTEXTURE9 g_apTextureModel[MAX_TEXTURE] = {};		// 読み込んだテクスチャ
+LPDIRECT3DTEXTURE9 g_apTextureModel[MODE_MAX][MAX_TEXTURE] = {};		// 読み込んだテクスチャ
 char g_aXFileName[MAX_MODEL][MAX_PATH];				// Xファイルのパス
 char g_aTextureFileName[MAX_TEXTURE][MAX_PATH];		// テクスチャパス
 int g_nTextureNum = 0;				// 読み込むテクスチャ数
 int g_nModelNum = 0;				// 読み込んだモデルの数
 MOTION_INFO g_mInfo = {};			// モーション情報
+bool g_bReadData[MODE_MAX] = {};
+
+//================================================================================================================
+// --- 動的にメモリを確保する必要のあるデータの読み込み ---
+//================================================================================================================
+HRESULT InitData(_In_ const char* pScriptFileName, MODE modeSet)
+{
+	/*** デバイスの取得 ***/
+	LPDIRECT3DDEVICE9 pDevice = GetDevice();
+	HWND hWnd = GetHandleWindow();
+	if (hWnd == NULL)
+	{ // ハンドル有無確認
+		return E_FAIL;
+	}
+
+	if (pScriptFileName == NULL)
+	{
+		return E_FAIL;
+	}
+
+	/** スクリプト読み込み関連 **/
+	FILE* pFile = NULL;				// ファイルポインタ
+	HRESULT hr = E_FAIL;			// ファイルの読み込み確認処理
+	char aStr[MAX_PATH * 5] = {};		// Xファイルのファイル名
+	char aTexturePath[MAX_PATH * 2] = {};		// テクスチャパス
+	char* PosTrash;					// ゴミ捨て場(コメント消去用変数)
+	char* pStart;					// 値の開始位置
+	const char* pNull = "\0";		// 何もなし
+	char aErrorText[MAX_PATH * 2] = {};	// エラー文用
+
+	/** 設置前パス読み込み関連 **/
+	int nCntTexture = 0;			// 読み込んだテクスチャ数
+	int nCntModel = 0;				// 現在のモデル数
+	
+	/*** ファイルオープン ***/
+	pFile = fopen(pScriptFileName, "r");
+	if (pFile == NULL)
+	{ // ファイルオープン失敗時
+		GenerateMessageBox(MB_ICONERROR, "Error (0)", "Scriptファイルの読み込みに失敗しました。");
+		return E_FAIL;
+	}
+
+	/*** SCRIPT確認 ***/
+	while (1)
+	{
+		memset(aStr, NULL, sizeof(aStr));					// 文字列を初期化
+		(void)fgets(aStr, sizeof(aStr), pFile);				// メモ帳から一列取得
+		/*** コメント消去処理 ***/
+		if (strncmp(aStr, "#", 1) != 0 && strncmp(aStr, "\n", 1) != 0)
+		{ // 取得後、最初の文字が#(コメントアウト宣言)だった場合、読み込まない
+			PosTrash = strstr(aStr, "\n");					// 改行がないか確認
+			if (PosTrash != NULL) strcpy(PosTrash, "");		// あれば消去
+
+			PosTrash = strstr(aStr, "#");					// 列の途中に#がないか確認
+			if (PosTrash != NULL) strcpy(PosTrash, "");		// あれば、それ以降の文字列を消去
+
+			PosTrash = strstr(aStr, "\t");					// タブスペースがないか確認
+			while (PosTrash != NULL)
+			{
+				if (PosTrash != NULL)
+				{
+					if (PosTrash[0] == aStr[0])
+					{
+						strcpy(aStr, &aStr[1]);
+						PosTrash = &PosTrash[1];				// あれば消去
+					}
+					else
+					{
+						strncpy(PosTrash, "", sizeof(char));	// あれば消去
+					}
+				}
+
+				PosTrash = strstr(aStr, "\t");					// タブスペースがないか確認
+			}
+
+			if (strcmp(aStr, "SCRIPT") == NULL)
+			{ // SCRIPT発見時読み込み開始
+				break;
+			}
+			else if (feof(pFile) != NULL)
+			{ // 発見できなかった場合読み込み終了 E_FAIL
+				GenerateMessageBox(MB_ICONERROR, "Error (1)", "Scriptの読み込み開始位置が指定されていません。");
+
+				/*** 読み込み終了 ***/
+				fclose(pFile);
+
+				return E_FAIL;
+			}
+		}
+	}
+
+	/*** 読み込みループ処理 ***/
+	while (1)
+	{
+		memset(aStr, NULL, sizeof(char) * (MAX_PATH * 5));					// 文字列を初期化
+		(void)fgets(aStr, sizeof(char) * (MAX_PATH * 5), pFile);				// メモ帳から一列取得
+
+		if (feof(pFile) != 0) break;						// もし取得後EOFの場合、読み込み終了
+		/*** コメント消去処理 ***/
+		if (strncmp(aStr, "#", 1) != 0 && strncmp(aStr, "\n", 1) != 0)
+		{ // 取得後、最初の文字が#(コメントアウト宣言)だった場合、読み込まない
+			PosTrash = strstr(aStr, "\n");					// 改行がないか確認
+			if (PosTrash != NULL) strcpy(PosTrash, "");		// あれば消去
+
+			PosTrash = strstr(aStr, "#");					// 列の途中に#がないか確認
+			if (PosTrash != NULL) strcpy(PosTrash, "");		// あれば、それ以降の文字列を消去
+
+			PosTrash = strstr(aStr, "\t");					// タブスペースがないか確認
+			while (PosTrash != NULL)
+			{
+				if (PosTrash != NULL)
+				{
+					if (PosTrash[0] == aStr[0])
+					{
+						strcpy(aStr, &aStr[1]);
+						PosTrash = &PosTrash[1];				// あれば消去
+					}
+					else
+					{
+						strncpy(PosTrash, "", sizeof(char));	// あれば消去
+					}
+				}
+
+				PosTrash = strstr(aStr, "\t");					// タブスペースがないか確認
+			}
+
+			/*** END_SCRIPTか確認 ***/
+			if (strstr(aStr, READ_TEXTURENUM) != NULL)
+			{ // 読み込むテクスチャ数を取得
+				pStart = strchr(aStr, '=');
+
+				/** テクスチャ数を取得 **/
+				(void)sscanf(pStart + 1, "%d", &g_nTextureNum);
+				if (g_nTextureNum > MAX_TEXTURE)
+				{ // 読み込むテクスチャ数が上限を超えていた場合、上限以下に制限
+					g_nTextureNum = MAX_TEXTURE;
+				}
+			}
+			else if (strstr(aStr, READ_TEXTUREPATH) != NULL && nCntTexture < g_nTextureNum)
+			{ // テクスチャパスの読み取り及びテクスチャロード (読み込む数分のみ)
+				memset(g_aTextureFileName[nCntTexture], NULL, sizeof(char) * 260);		// 文字列を初期化
+
+				pStart = strchr(aStr, '=');
+
+				/** テクスチャパスの読み取り **/
+				(void)sscanf(pStart + 1, "%s", &g_aTextureFileName[nCntTexture]);
+
+				CheckPath(&g_aTextureFileName[nCntTexture][0]);
+
+				/*** テクスチャの読み込み ***/
+				hr = D3DXCreateTextureFromFile(pDevice,
+					g_aTextureFileName[nCntTexture],
+					&g_apTextureModel[modeSet][nCntTexture]);
+
+				if (FAILED(hr))
+				{ // テクスチャの読み込み失敗時
+					GenerateMessageBox(MB_ICONERROR,
+						"Error (1)",
+						"%d番目のテクスチャの読み込みに失敗しました。",
+						nCntTexture);
+				}
+
+				nCntTexture++;
+			}
+
+		}
+	}
+}
 
 //================================================================================================================
 // --- スクリプトの読み込み ---
@@ -143,12 +314,13 @@ HRESULT InitScript(_In_ const char* pScriptFileName)
 	/** スクリプト読み込み関連 **/
 	FILE *pFile = NULL;				// ファイルポインタ
 	HRESULT hr = E_FAIL;			// ファイルの読み込み確認処理
-	char aStr[MAX_PATH] = {};		// Xファイルのファイル名
-	char aTexturePath[MAX_PATH] = {};		// テクスチャパス
+	char aStr[MAX_PATH * 5] = {};		// Xファイルのファイル名
+	char aTexturePath[MAX_PATH * 2] = {};		// テクスチャパス
 	char *PosTrash;					// ゴミ捨て場(コメント消去用変数)
 	char *pStart;					// 値の開始位置
 	const char *pNull = "\0";		// 何もなし
-	char aErrorText[MAX_PATH] = {};	// エラー文用
+	char aErrorText[MAX_PATH * 2] = {};	// エラー文用
+	MODE mode = GetModeNext();
 
 	/** 設置前パス読み込み関連 **/
 	int nCntTexture = 0;			// 読み込んだテクスチャ数
@@ -178,14 +350,14 @@ HRESULT InitScript(_In_ const char* pScriptFileName)
 	float fRotSpd = 0.0f;	// 回転速度
 
 	/** モデル設置関連 **/
-	RECT stageRect = RECT_NULL;			// ステージの移動可能範囲
-	char aCodeName[MAX_PATH] = {};		// コードネーム
+	RECT stageRect = RECT_NULL;		// ステージの移動可能範囲
+	char aCodeName[MAX_PATH * 2] = {};	// コードネーム
 	int nModel = 0;					// 設置したモデル数
 	int nIndexModel = 0;			// 読み込んだモデルのインデックス
 	int nTypeModel = 1;				// 読み込んだモデルのタイプ
 	float fSpd = 0.0f;				// 速度
-	int nUseCollision;				// 当たり判定の有無
-	bool bUseCollision;				// 当たり判定の有無
+	int nUseCollision = 0;			// 当たり判定の有無
+	bool bUseCollision = false;		// 当たり判定の有無
 
 	/** 壁、床設置関連 **/
 	int nField = 0;							// 床の数
@@ -207,6 +379,11 @@ HRESULT InitScript(_In_ const char* pScriptFileName)
 
 	/*** 読み込んだモデル数のリセット ***/
 	g_nModelNum = 0;
+	g_nTextureNum = 0;
+
+	ZeroMemory(&g_apTextureModel[0], sizeof(g_apTextureModel));
+	ZeroMemory(&g_aTextureFileName[0], sizeof(g_aTextureFileName));
+	ZeroMemory(&g_aXFileName[0], sizeof(g_aXFileName));
 
 	/*** ファイルオープン ***/
 	pFile = fopen(pScriptFileName, "r");
@@ -256,6 +433,10 @@ HRESULT InitScript(_In_ const char* pScriptFileName)
 			else if (feof(pFile) != NULL)
 			{ // 発見できなかった場合読み込み終了 E_FAIL
 				GenerateMessageBox(MB_ICONERROR, "Error (1)", "Scriptの読み込み開始位置が指定されていません。");
+
+				/*** 読み込み終了 ***/
+				fclose(pFile);
+
 				return E_FAIL;
 			}
 		}
@@ -264,8 +445,8 @@ HRESULT InitScript(_In_ const char* pScriptFileName)
 	/*** 読み込みループ処理 ***/
 	while (1)
 	{
-		memset(aStr, NULL, sizeof(aStr));					// 文字列を初期化
-		(void)fgets(aStr, sizeof(aStr), pFile);				// メモ帳から一列取得
+		memset(aStr, NULL, sizeof(char) * (MAX_PATH * 5));					// 文字列を初期化
+		(void)fgets(aStr, sizeof(char) * (MAX_PATH * 5), pFile);				// メモ帳から一列取得
 
 		if (feof(pFile) != 0) break;						// もし取得後EOFの場合、読み込み終了
 		/*** コメント消去処理 ***/
@@ -310,7 +491,7 @@ HRESULT InitScript(_In_ const char* pScriptFileName)
 			}
 			else if (strstr(aStr, READ_TEXTUREPATH) != NULL && nCntTexture < g_nTextureNum)
 			{ // テクスチャパスの読み取り及びテクスチャロード (読み込む数分のみ)
-				memset(g_aTextureFileName[nCntTexture], NULL, sizeof(g_aTextureFileName[nCntTexture]));		// 文字列を初期化
+				memset(g_aTextureFileName[nCntTexture], NULL, sizeof(char) * 260);		// 文字列を初期化
 
 				pStart = strchr(aStr, '=');
 
@@ -322,7 +503,7 @@ HRESULT InitScript(_In_ const char* pScriptFileName)
 				/*** テクスチャの読み込み ***/
 				hr = D3DXCreateTextureFromFile(pDevice,
 					g_aTextureFileName[nCntTexture],
-					&g_apTextureModel[nCntTexture]);
+					&g_apTextureModel[mode][nCntTexture]);
 
 				if (FAILED(hr))
 				{ // テクスチャの読み込み失敗時
@@ -347,7 +528,7 @@ HRESULT InitScript(_In_ const char* pScriptFileName)
 			}
 			else if (strstr(aStr, READ_MODELPATH) != NULL && nCntModel < g_nModelNum)
 			{ // モデルパスの読み込み
-				memset(g_aXFileName[nCntModel], NULL, sizeof(g_aXFileName[nCntModel]));		// 文字列を初期化
+				memset(g_aXFileName[nCntModel], NULL, sizeof(char) * 260);		// 文字列を初期化
 				pStart = strchr(aStr, '=');
 
 				/** モデルパスの読み込み **/
@@ -368,8 +549,8 @@ HRESULT InitScript(_In_ const char* pScriptFileName)
 			{ // カメラの設置
 				while (1)
 				{
-					memset(aStr, NULL, sizeof(aStr));					// 文字列を初期化
-					(void)fgets(aStr, sizeof(aStr), pFile);				// メモ帳から一列取得
+					memset(aStr, NULL, sizeof(char) * (MAX_PATH * 5));
+					(void)fgets(aStr, sizeof(char) * (MAX_PATH * 5), pFile);				// メモ帳から一列取得
 					/*** コメント消去処理 ***/
 					if (DeleteComments(&aStr[0]))
 					{ // 取得後、最初の文字が#(コメントアウト宣言)だった場合、読み込まない
@@ -482,6 +663,7 @@ HRESULT InitScript(_In_ const char* pScriptFileName)
 						}
 						else if (strcmp(aStr, READ_ORNAMENT) == NULL && nCntOrnament < nNumOrnament)
 						{
+							int nOrnament = -1;
 							int nType = -1;
 							float fRadius = 0.0f;
 							float fWeight = 0.0f;
@@ -500,6 +682,13 @@ HRESULT InitScript(_In_ const char* pScriptFileName)
 										/** モデル番号の読み込み **/
 										(void)sscanf(pStart + 1, "%d", &nType);
 									}
+									else if (strstr(aStr, READ_ISSTAR) != NULL)
+									{
+										pStart = strchr(aStr, '=');
+
+										/** 当たり判定の半径の読み込み **/
+										(void)sscanf(pStart + 1, "%d", &nOrnament);
+									}
 									else if (strstr(aStr, READ_RADIUS) != NULL)
 									{
 										pStart = strchr(aStr, '=');
@@ -516,7 +705,7 @@ HRESULT InitScript(_In_ const char* pScriptFileName)
 									}
 									else if (strstr(aStr, READ_ENDORNAMENT) != NULL)
 									{
-										SettingOrnamentInfo(nType, fRadius, fWeight);
+										SettingOrnamentInfo(nOrnament, nType, fRadius, fWeight);
 										nCntOrnament++;
 										break;
 									}
@@ -594,8 +783,6 @@ HRESULT InitScript(_In_ const char* pScriptFileName)
 
 							/** カメラの注視点の位置の読み込み **/
 							(void)sscanf(pStart + 1, "%d", &nUseCollision);
-
-							nUseCollision = 1;
 
 							if (nUseCollision < 0 || nUseCollision >= COLLISIONTYPE_MAX)
 							{
@@ -1384,6 +1571,8 @@ HRESULT LoadMotion(_In_ const char* pMotionFileName)
 	int nIndexModel = 0;			// 読み込んだモデルのインデックス
 	int nTypeModel = 1;				// 読み込んだモデルのタイプ
 	int nParts = 0;					// 読み込んだパーツ情報
+	int nIdxHead = 0;				// 頭
+	int nIdxHand = 0;				// 手
 
 	/*** モーション変数 ***/
 	int nNumParts = 0;						// パーツ総数
@@ -1398,6 +1587,8 @@ HRESULT LoadMotion(_In_ const char* pMotionFileName)
 	PartsInfo pInfo = {};					// パーツ情報
 	MOTIONTYPE mType = MOTIONTYPE_NEUTRAL;	// モーションタイプ
 	int nType = MOTIONTYPE_NEUTRAL;			// 現在設定中のモーションタイプ(キャスト及び判定用)
+
+	ZeroMemory(&g_mInfo, sizeof(MOTION_INFO));
 
 	/*** ファイルオープン ***/
 	pFile = fopen(pMotionFileName, "r");
@@ -1427,6 +1618,9 @@ HRESULT LoadMotion(_In_ const char* pMotionFileName)
 					"Error (1)",
 					"Scriptの読み込み開始位置が指定されていません。");
 
+				/*** 読み込み終了 ***/
+				fclose(pFile);
+
 				return E_FAIL;
 			}
 		}
@@ -1443,6 +1637,9 @@ HRESULT LoadMotion(_In_ const char* pMotionFileName)
 			GenerateMessageBox(MB_ICONERROR,
 				"Error (2)",
 				"読み込みが異常終了しました。");
+
+			/*** 読み込み終了 ***/
+			fclose(pFile);
 
 			return E_FAIL;				// もし取得後EOFの場合、読み込み終了
 		}
@@ -1505,6 +1702,10 @@ HRESULT LoadMotion(_In_ const char* pMotionFileName)
 						GenerateMessageBox(MB_ICONERROR,
 							"Error (2)",
 							"読み込みが異常終了しました。");
+
+						/*** 読み込み終了 ***/
+						fclose(pFile);
+
 						return E_FAIL;				// もし取得後EOFの場合、読み込み終了
 					}
 
@@ -1515,6 +1716,7 @@ HRESULT LoadMotion(_In_ const char* pMotionFileName)
 							SetPlayerSetting(fMove, fJump);
 							SetMotionPartsNum(nNumParts);
 							SetCollisionSize(fRadius, fHeight);
+							SetPlayerPartsIndices(nIdxHead, nIdxHand);
 
 							break;
 						}
@@ -1550,8 +1752,22 @@ HRESULT LoadMotion(_In_ const char* pMotionFileName)
 						{
 							pStart = strchr(aStr, '=');
 
-							/** 移動量の読み込み **/
+							/** 跳躍力の読み込み **/
 							(void)sscanf(pStart + 1, "%f", &fJump);
+						}
+						else if (strstr(aStr, READ_HEAD) != NULL)
+						{
+							pStart = strchr(aStr, '=');
+
+							/** 頭のインデックスの読み込み **/
+							(void)sscanf(pStart + 1, "%d", &nIdxHead);
+						}
+						else if (strstr(aStr, READ_HAND) != NULL)
+						{
+							pStart = strchr(aStr, '=');
+
+							/** 手のインデックスの読み込み **/
+							(void)sscanf(pStart + 1, "%d", &nIdxHand);
 						}
 						else if (strstr(aStr, READ_PARTSSET) != NULL)
 						{
@@ -1565,6 +1781,10 @@ HRESULT LoadMotion(_In_ const char* pMotionFileName)
 									GenerateMessageBox(MB_ICONERROR,
 										"Error (2)",
 										"読み込みが異常終了しました。");
+
+									/*** 読み込み終了 ***/
+									fclose(pFile);
+
 									return E_FAIL;				// もし取得後EOFの場合、読み込み終了
 								}
 
@@ -1634,6 +1854,10 @@ HRESULT LoadMotion(_In_ const char* pMotionFileName)
 						GenerateMessageBox(MB_ICONERROR,
 							"Error (2)",
 							"読み込みが異常終了しました。");
+
+						/*** 読み込み終了 ***/
+						fclose(pFile);
+
 						return E_FAIL;				// もし取得後EOFの場合、読み込み終了
 					}
 
@@ -1685,6 +1909,10 @@ HRESULT LoadMotion(_In_ const char* pMotionFileName)
 									GenerateMessageBox(MB_ICONERROR,
 										"Error (2)",
 										"読み込みが異常終了しました。");
+
+									/*** 読み込み終了 ***/
+									fclose(pFile);
+
 									return E_FAIL;				// もし取得後EOFの場合、読み込み終了
 								}
 
@@ -1715,6 +1943,10 @@ HRESULT LoadMotion(_In_ const char* pMotionFileName)
 												GenerateMessageBox(MB_ICONERROR,
 													"Error (2)",
 													"読み込みが異常終了しました。");
+
+												/*** 読み込み終了 ***/
+												fclose(pFile);
+
 												return E_FAIL;				// もし取得後EOFの場合、読み込み終了
 											}
 
@@ -1815,12 +2047,15 @@ bool DeleteComments(char* aStr)
 void UninitScript(void)
 {
 	/*** テクスチャの破棄 ***/
-	for (int nCntScript = 0; nCntScript < MAX_TEXTURE; nCntScript++)
+	for (int nCntMode = 0; nCntMode < MODE_MAX; nCntMode++)
 	{
-		if (g_apTextureModel[nCntScript] != NULL)
+		for (int nCntScript = 0; nCntScript < MAX_TEXTURE; nCntScript++)
 		{
-			g_apTextureModel[nCntScript]->Release();
-			g_apTextureModel[nCntScript] = NULL;
+			if (g_apTextureModel[nCntMode][nCntScript] != NULL)
+			{
+				g_apTextureModel[nCntMode][nCntScript]->Release();
+				g_apTextureModel[nCntMode][nCntScript] = NULL;
+			}
 		}
 	}
 }
@@ -1835,5 +2070,6 @@ LPDIRECT3DTEXTURE9 GetTexture(_In_ int nIndexTexture)
 		return NULL;
 	}
 
-	return g_apTextureModel[nIndexTexture];
+	MODE mode = GetMode();
+	return g_apTextureModel[mode][nIndexTexture];
 }

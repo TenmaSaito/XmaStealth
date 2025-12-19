@@ -12,6 +12,9 @@
 #include "fade.h"
 #include "rankingScore.h"
 #include "cameraRanking.h"
+#include "field.h"
+#include "object.h"
+#include "mesh.h"
 
 //*************************************************************************************************
 //*** マクロ定義 ***
@@ -44,10 +47,23 @@ void InitRanking(void)
 	/*** カメラの初期化 ***/
 	InitCameraRanking();
 
+	InitField();
+
+	InitObject();
+
+	InitMeshCylinder();
+
 	/*** ランキングの設定 ***/
 	SetRankingScore();
 
-	SetCameraRanking(D3DXVECTOR3(0.0f, 50.0f, 100.0f), D3DXVECTOR3(0.0f, 100.0f, 300.0f), 45.0f, 1, 10000, 300.0f, 1.0f, 0.02f);
+	SetCameraRanking(D3DXVECTOR3(0.0f, 150.0f, 100.0f), D3DXVECTOR3(0.0f, 50.0f, 0.0f), 45.0f, 1.0f, 30000.0f, 300.0f, 1.0f, 0.02f);
+
+	if (FAILED(InitScript("data//SCRIPT//modelRanking.txt")))
+	{
+		return;
+	}
+
+	SetMeshCylinder(VEC_Y(-15000.0f), VECNULL, 30000.0f, 20000.0f, 32, 1, CULLINGTYPE_NONE, 1, false);
 }
 
 //=================================================================================================
@@ -63,6 +79,12 @@ void UninitRanking(void)
 	UninitCameraRanking();
 
 	UninitLight();
+
+	UninitMeshCylinder();
+
+	UninitField();
+
+	UninitObject();
 }
 
 //=================================================================================================
@@ -78,6 +100,12 @@ void UpdateRanking(void)
 	UpdateLight();
 
 	UpdateRankingScore();
+
+	UpdateField();
+
+	UpdateMeshCylinder();
+
+	UpdateObject();
 
 	if ((GetKeyboardTrigger(DIK_RETURN)
 		|| GetJoypadTrigger(JOYKEY_A)
@@ -110,6 +138,11 @@ void DrawRanking(void)
 	SetCameraRanking();
 
 	// VERTEX_3D ============================================
+	DrawMeshCylinder();
+
+	DrawField();
+
+	DrawObject();
 
 	// VERTEX_2D ============================================
 	/*** ランキングの描画 ***/

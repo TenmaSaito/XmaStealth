@@ -9,34 +9,25 @@ SCRIPT		# 消すな
 #=================================================
 # 読み込むテクスチャファイル数
 #=================================================
-NUM_TEXTURE = 18
+NUM_TEXTURE = 9
 
 #=================================================
 # テクスチャパス
 #=================================================
 TEXTURE_FILENAME = data/TEXTURE/field000.jpg		# [0]地面テクスチャ
-TEXTURE_FILENAME = data/TEXTURE/field001.jpg		# [1]地面テクスチャ
-TEXTURE_FILENAME = data/TEXTURE/field002.jpg		# [2]地面テクスチャ
-TEXTURE_FILENAME = data/TEXTURE/wall000.jpg			# [3]壁テクスチャ
-TEXTURE_FILENAME = data/TEXTURE/wall001.jpg			# [4]壁テクスチャ
-TEXTURE_FILENAME = data/TEXTURE/wall002.jpg			# [5]壁テクスチャ
-TEXTURE_FILENAME = data/TEXTURE/wall100.jpg			# [6]壁テクスチャ
-TEXTURE_FILENAME = data/TEXTURE/fence000.png		# [7]フェンステクスチャ
-TEXTURE_FILENAME = data/TEXTURE/river000.jpg		# [8]川テクスチャ
-TEXTURE_FILENAME = data/TEXTURE/Tree000.png			# [9]木テクスチャ
-TEXTURE_FILENAME = data/TEXTURE/ball000.png			# [10]弾テクスチャ
-TEXTURE_FILENAME = data/TEXTURE/explosion000.png	# [11]爆発アニメーションテクスチャ
-TEXTURE_FILENAME = data/TEXTURE/shadow000.jpg		# [12]エフェクト兼影テクスチャ
-TEXTURE_FILENAME = data/TEXTURE/flooring000.jpg		# [13]フローリングテクスチャ
-TEXTURE_FILENAME = data/TEXTURE/HouseWall000.jpg	# [14]家の壁テクスチャ
-TEXTURE_FILENAME = data/TEXTURE/ChildWall000.jpg	# [15]子供壁テクスチャ
-TEXTURE_FILENAME = data/TEXTURE/Carpet.jpg			# [16]カーペットテクスチャ
-TEXTURE_FILENAME = data/TEXTURE/sky000.jpg			# [17]ソラ
+TEXTURE_FILENAME = data/TEXTURE/explosion000.png	# [1]爆発アニメーションテクスチャ
+TEXTURE_FILENAME = data/TEXTURE/shadow000.jpg		# [2]エフェクト兼影テクスチャ
+TEXTURE_FILENAME = data/TEXTURE/flooring000.jpg		# [3]フローリングテクスチャ
+TEXTURE_FILENAME = data/TEXTURE/HouseWall000.jpg	# [4]家の壁テクスチャ
+TEXTURE_FILENAME = data/TEXTURE/ChildWall000.jpg	# [5]子供壁テクスチャ
+TEXTURE_FILENAME = data/TEXTURE/Carpet.jpg			# [6]カーペットテクスチャ
+TEXTURE_FILENAME = data/TEXTURE/sky000.jpg			# [7]ソラ
+TEXTURE_FILENAME = data/TEXTURE/gradation000.jpg	# [8]グラデーション
 
 #=================================================
 # 読み込むモデル数
 #================================================
-NUM_MODEL = 28
+NUM_MODEL = 37
 
 #=================================================
 # Xファイルのパス
@@ -50,52 +41,124 @@ MODEL_FILENAME = data/MODEL/Object/kitchen.x				# [5] キッチン
 MODEL_FILENAME = data/MODEL/Object/table.x					# [6] テーブル
 MODEL_FILENAME = data/MODEL/Object/chair.x					# [7] 椅子
 MODEL_FILENAME = data/MODEL/Object/XmasTree.x				# [8] クリスマスツリー
-MODEL_FILENAME = data/MODEL/Object/Ornament_0.x				# [9] オーナメント
+MODEL_FILENAME = data/MODEL/Object/Ornaments/Ornament_0.x	# [9] オーナメント
 MODEL_FILENAME = data/MODEL/Object/sofa-.x					# [10] ソファー
 MODEL_FILENAME = data/MODEL/Object/tv-table.x				# [11] TVテーブル
-MODEL_FILENAME = data/MODEL/Object/ornament_box.x			# [12] 仮配置用オーナメント
-MODEL_FILENAME = data/MODEL/Object/freezer.x				# [13] 冷蔵庫
-MODEL_FILENAME = data/MODEL/Object/kitchen_storage.x		# [14] キッチン棚
-MODEL_FILENAME = data/MODEL/Object/childbed.x				# [15] 子供用ベッド
-MODEL_FILENAME = data/MODEL/Object/child_storage.x			# [16] 子供用勉強棚
-MODEL_FILENAME = data/MODEL/Object/tv.x						# [17] テレビ
-MODEL_FILENAME = data/MODEL/Object/book_storage.x			# [18] 本棚
-MODEL_FILENAME = data/MODEL/Object/living_light.x			# [19] リビングの照明
-MODEL_FILENAME = data/MODEL/Object/electronic_range.x		# [20] 電子レンジ付棚
-MODEL_FILENAME = data/MODEL/Object/child_light.x			# [21] 子供部屋照明
-MODEL_FILENAME = data/MODEL/Object/kotatu.x					# [22] こたつ
-MODEL_FILENAME = data/MODEL/Object/CardBoard.x				# [23] 段ボール
-MODEL_FILENAME = data/MODEL/Object/MassageChair.x			# [24] マッサージチェア
-MODEL_FILENAME = data/MODEL/Object/present_box.x			# [25] プレゼントボックス
-MODEL_FILENAME = data/MODEL/Object/cafe_table.x				# [26] カフェテリア風机
-MODEL_FILENAME = data/MODEL/Object/Ornament_Star.x			# [27] ツリーの一番上にあるあの、あれさ。☆☆。
+MODEL_FILENAME = data/MODEL/Object/Ornaments/ornament_box.x			# [12] 仮配置用オーナメント
+MODEL_FILENAME = data/MODEL/Object/freezer.x						# [13] 冷蔵庫
+MODEL_FILENAME = data/MODEL/Object/kitchen_storage.x				# [14] キッチン棚
+MODEL_FILENAME = data/MODEL/Object/childbed.x						# [15] 子供用ベッド
+MODEL_FILENAME = data/MODEL/Object/child_storage.x					# [16] 子供用勉強棚
+MODEL_FILENAME = data/MODEL/Object/tv.x								# [17] テレビ
+MODEL_FILENAME = data/MODEL/Object/book_storage.x					# [18] 本棚
+MODEL_FILENAME = data/MODEL/Object/living_light.x					# [19] リビングの照明
+MODEL_FILENAME = data/MODEL/Object/electronic_range.x				# [20] 電子レンジ付棚
+MODEL_FILENAME = data/MODEL/Object/child_light.x					# [21] 子供部屋照明
+MODEL_FILENAME = data/MODEL/Object/kotatu.x							# [22] こたつ
+MODEL_FILENAME = data/MODEL/Object/CardBoard.x						# [23] 段ボール
+MODEL_FILENAME = data/MODEL/Object/MassageChair.x					# [24] マッサージチェア
+MODEL_FILENAME = data/MODEL/Object/Ornaments/present_box.x			# [25] プレゼントボックス
+MODEL_FILENAME = data/MODEL/Object/cafe_table.x						# [26] カフェテリア風机
+MODEL_FILENAME = data/MODEL/Object/Ornaments/Ornament_Star.x		# [27] ツリーの一番上にあるあの、あれさ。☆☆。
+MODEL_FILENAME = data/MODEL/Object/Ornaments/Ornament_cane.x		# [28] 何か飴の杖みたいなやつ
+MODEL_FILENAME = data/MODEL/Object/Ornaments/cookie.x				# [29] 美味しそうなジンジャークッキー
+MODEL_FILENAME = data/MODEL/Object/Ornaments/green_light.x			# [30] 何か光ってるやつ(緑)
+MODEL_FILENAME = data/MODEL/Object/Ornaments/red_light.x			# [31] 何か光ってるやつ(赤)
+MODEL_FILENAME = data/MODEL/Object/Ornaments/white_light.x			# [32] 何か光ってるやつ(白)
+MODEL_FILENAME = data/MODEL/Object/Ornaments/ornament_snowCrystal.x		# [33] 雪の結晶的なね。めっちゃ頑張った
+MODEL_FILENAME = data/MODEL/Object/Ornaments/ornament_snowman.x			# [34] 雪だるまつくーろー
+MODEL_FILENAME = data/MODEL/Object/Ornaments/ornament_santa's_hat.x		# [35] サンタの帽子です。はい。
+MODEL_FILENAME = data/MODEL/Object/Ornaments/ornament_ring.x			# [36] この時期なるとドア前によくかかってるあれ
 
 #=================================================
 # オーナメント用の詳細設定
 #=================================================
 ORNAMENTSET
 
-	NUM_ORNAMENT = 3	# 設定するオーナメント数
+	NUM_ORNAMENT = 12	# 設定するオーナメント数
 
 	ORNAMENT
-		ISSTAR = 1		# スターか (0 = FALSE / 1 = TRUE)
+		ISSTAR = 1		# スターか (0 = FALSE / 1 = TRUE / 2 = TRASH)
 		TYPE = 27		# モデル番号
 		RADIUS = 5.0	# 当たり判定の半径
 		WEIGHT = 50.0	# オーナメントの重量
 	END_ORNAMENT
 
 	ORNAMENT
-		ISSTAR = 0		# スターか (0 = FALSE / 1 = TRUE)
+		ISSTAR = 0		# スターか (0 = FALSE / 1 = TRUE / 2 = TRASH)
 		TYPE = 25		# モデル番号
 		RADIUS = 5.0	# 当たり判定の半径
 		WEIGHT = 10.0	# オーナメントの重量
 	END_ORNAMENT
 
 	ORNAMENT
-		ISSTAR = 0		# スターか (0 = FALSE / 1 = TRUE)
+		ISSTAR = 0		# スターか (0 = FALSE / 1 = TRUE / 2 = TRASH)
 		TYPE = 9		# モデル番号
 		RADIUS = 5.0	# 当たり判定の半径
 		WEIGHT = 5.0	# オーナメントの重量
+	END_ORNAMENT
+
+	ORNAMENT
+		ISSTAR = 0		# スターか (0 = FALSE / 1 = TRUE / 2 = TRASH)
+		TYPE = 28		# モデル番号
+		RADIUS = 5.0	# 当たり判定の半径
+		WEIGHT = 6.0	# オーナメントの重量
+	END_ORNAMENT
+
+	ORNAMENT
+		ISSTAR = 0		# スターか (0 = FALSE / 1 = TRUE / 2 = TRASH)
+		TYPE = 29		# モデル番号
+		RADIUS = 5.0	# 当たり判定の半径
+		WEIGHT = 6.0	# オーナメントの重量
+	END_ORNAMENT
+
+	ORNAMENT
+		ISSTAR = 0		# スターか (0 = FALSE / 1 = TRUE / 2 = TRASH)
+		TYPE = 30		# モデル番号
+		RADIUS = 2.0	# 当たり判定の半径
+		WEIGHT = 3.0	# オーナメントの重量
+	END_ORNAMENT
+
+	ORNAMENT
+		ISSTAR = 0		# スターか (0 = FALSE / 1 = TRUE / 2 = TRASH)
+		TYPE = 31		# モデル番号
+		RADIUS = 2.0	# 当たり判定の半径
+		WEIGHT = 3.0	# オーナメントの重量
+	END_ORNAMENT
+
+	ORNAMENT
+		ISSTAR = 0		# スターか (0 = FALSE / 1 = TRUE / 2 = TRASH)
+		TYPE = 32		# モデル番号
+		RADIUS = 2.0	# 当たり判定の半径
+		WEIGHT = 3.0	# オーナメントの重量
+	END_ORNAMENT
+
+	ORNAMENT
+		ISSTAR = 0		# スターか (0 = FALSE / 1 = TRUE / 2 = TRASH)
+		TYPE = 33		# モデル番号
+		RADIUS = 2.0	# 当たり判定の半径
+		WEIGHT = 3.0	# オーナメントの重量
+	END_ORNAMENT
+
+	ORNAMENT
+		ISSTAR = 0		# スターか (0 = FALSE / 1 = TRUE / 2 = TRASH)
+		TYPE = 34		# モデル番号
+		RADIUS = 2.0	# 当たり判定の半径
+		WEIGHT = 3.0	# オーナメントの重量
+	END_ORNAMENT
+
+	ORNAMENT
+		ISSTAR = 0		# スターか (0 = FALSE / 1 = TRUE / 2 = TRASH)
+		TYPE = 35		# モデル番号
+		RADIUS = 2.0	# 当たり判定の半径
+		WEIGHT = 3.0	# オーナメントの重量
+	END_ORNAMENT
+
+	ORNAMENT
+		ISSTAR = 0		# スターか (0 = FALSE / 1 = TRUE / 2 = TRASH)
+		TYPE = 36		# モデル番号
+		RADIUS = 2.0	# 当たり判定の半径
+		WEIGHT = 3.0	# オーナメントの重量
 	END_ORNAMENT
 
 END_ORNAMENTSET
@@ -104,9 +167,9 @@ END_ORNAMENTSET
 # カメラ設定
 #=================================================
 CAMERASET
-	POSV = 0 45 -300	# カメラの開始視点位置
+	POSV = 0 55 -300	# カメラの開始視点位置
 	POSR = 0 20 0		# カメラの開始注視点位置
-	ZLEN = 100			# カメラの開始注視点距離
+	ZLEN = 200			# カメラの開始注視点距離
 	VANGLE = 45			# カメラの視野角
 	ZN = 1				# カメラの描画開始距離
 	ZF = 10000			# カメラの描画限界距離
@@ -118,28 +181,21 @@ END_CAMERASET
 # エフェクト設定
 #=================================================
 EFFECTSET
-	TEXTYPE = 12		# エフェクトのテクスチャ
+	TEXTYPE = 2		# エフェクトのテクスチャ
 END_EFFECTSET
 
 #=================================================
 # 影の設定
 #=================================================
 SHADOWSET
-	TEXTYPE = 12		# 影のテクスチャ
+	TEXTYPE = 2		# 影のテクスチャ
 END_SHADOWSET
-
-#=================================================
-# 弾の設定
-#=================================================
-BULLETSET
-	TEXTYPE = 10		# 弾のテクスチャ
-END_BULLETSET
 
 #=================================================
 # 爆発の設定
 #=================================================
 EXPLOSIONSET
-	TEXTYPE = 11		# 爆発のテクスチャアニメーション
+	TEXTYPE = 1		# 爆発のテクスチャアニメーション
 	TEXANIMCNT = 8		# 爆発のアニメーション数
 END_EXPLOSIONSET
 
@@ -161,7 +217,7 @@ END_FIELDSET
 # リビング
 #-------------------------------------------------
 FIELDSET
-	TEXTYPE = 13
+	TEXTYPE = 3
 	POS = 0 0 0
 	ROT = 0 0 0
 	BLOCK = 16 20
@@ -173,7 +229,7 @@ END_FIELDSET
 # がきんちょの部屋
 #-------------------------------------------------
 FIELDSET
-	TEXTYPE = 13
+	TEXTYPE = 3
 	POS = 550 0 350
 	ROT = 0 0 0
 	BLOCK = 6 6
@@ -184,7 +240,7 @@ END_FIELDSET
 # 玄関
 #-------------------------------------------------
 FIELDSET
-	TEXTYPE = 13
+	TEXTYPE = 3
 	POS = 200 0 -750
 	ROT = 0 0 0
 	BLOCK = 8 10
@@ -195,7 +251,7 @@ END_FIELDSET
 # 階段
 #-------------------------------------------------
 MESHFIELDSET
-	TEXTYPE = 13
+	TEXTYPE = 3
 	POS = 38 61 -50
 	ROT = 331 0 0
 	SIZE = 60 408
@@ -210,7 +266,7 @@ END_MESHFIELDSET
 # リビング
 #-------------------------------------------------
 FIELDSET
-	TEXTYPE = 13
+	TEXTYPE = 3
 	POS = -175 187 -107
 	ROT = 0 0 0
 	BLOCK = 9 12
@@ -219,7 +275,7 @@ FIELDSET
 END_FIELDSET
 
 FIELDSET
-	TEXTYPE = 13
+	TEXTYPE = 3
 	POS = 76 187 -250
 	ROT = 0 0 0
 	BLOCK = 4 30
@@ -228,7 +284,7 @@ FIELDSET
 END_FIELDSET
 
 FIELDSET
-	TEXTYPE = 13
+	TEXTYPE = 3
 	POS = 76 187 120
 	ROT = 0 0 0
 	BLOCK = 4 4
@@ -240,7 +296,7 @@ END_FIELDSET
 # カーペット
 #=================================================
 FIELDSET
-	TEXTYPE = 16
+	TEXTYPE = 6
 	POS = -200 1 300
 	ROT = 0 0 0
 	BLOCK = 25 25
@@ -255,7 +311,7 @@ END_FIELDSET
 #-------------------------------------------------
 # 左 ----
 WALLSET
-	TEXTYPE = 14
+	TEXTYPE = 4
 	POS = -400 0 0
 	ROT = 0 270 0
 	BLOCK = 20 10
@@ -264,7 +320,7 @@ END_WALLSET
 
 # 右 ----
 WALLSET
-	TEXTYPE = 14
+	TEXTYPE = 4
 	POS = 100 0 -100
 	ROT = 0 90 0
 	COL = 1.0 1.0 0.0 1.0
@@ -274,7 +330,7 @@ END_WALLSET
 
 # 後ろ ----
 WALLSET
-	TEXTYPE = 14
+	TEXTYPE = 4
 	POS = -250 0 -400
 	ROT = 0 180 0
 	BLOCK = 20 10
@@ -283,7 +339,7 @@ END_WALLSET
 
 # 正面 ----
 WALLSET
-	TEXTYPE = 14
+	TEXTYPE = 4
 	POS = -100 0 500
 	ROT = 0 0 0
 	COL = 1.0 1.0 0.0 1.0
@@ -293,7 +349,7 @@ END_WALLSET
 
 # 階段側面 ----
 WALLSET
-	TEXTYPE = 14
+	TEXTYPE = 4
 	POS = 45 0 -107
 	ROT = 0 90 0
 	COL = 1.0 1.0 0.0 1.0
@@ -304,7 +360,7 @@ END_WALLSET
 
 # 階段側面 ----
 WALLSET
-	TEXTYPE = 14
+	TEXTYPE = 4
 	POS = 52 0 -107
 	ROT = 0 270 0
 	COL = 1.0 1.0 0.0 1.0
@@ -318,7 +374,7 @@ END_WALLSET
 #-------------------------------------------------
 # 右 ----
 WALLSET
-	TEXTYPE = 15
+	TEXTYPE = 5
 	POS = 400 0 400
 	ROT = 0 90 0
 	BLOCK = 4 10
@@ -327,7 +383,7 @@ END_WALLSET
 
 # 後ろ ----
 WALLSET
-	TEXTYPE = 15
+	TEXTYPE = 5
 	POS = 250 0 300
 	ROT = 0 180 0
 	BLOCK = 6 10
@@ -336,7 +392,7 @@ END_WALLSET
 
 # 正面 ----
 WALLSET
-	TEXTYPE = 15
+	TEXTYPE = 5
 	POS = 300 0 500
 	ROT = 0 0 0
 	BLOCK = 6 10
@@ -369,7 +425,7 @@ MODELSET
 	TYPE = 13
 	INDEX = 1
 	POS = -365 0 -365
-	ROT = 0 0 0
+	ROT = 0 180 0
 END_MODELSET
 
 # キッチン棚 ----
@@ -377,7 +433,7 @@ MODELSET
 	TYPE = 14
 	INDEX = 1
 	POS = -250 0 -375
-	ROT = 0 0 0
+	ROT = 0 180 0
 END_MODELSET
 
 # リビング =====================================
@@ -395,8 +451,8 @@ MODELSET
 	TYPE = 7
 	INDEX = 1
 	POS = -330 0 80
-	ROT = 0 270 0
-	COLLISION = 0
+	ROT = 0 225 0
+	COLLISION = 2
 END_MODELSET
 
 # 椅子2 ----
@@ -429,6 +485,7 @@ MODELSET
 	INDEX = 1
 	POS = -320 0 325
 	ROT = 0 270 0
+	COLLISION = 2
 END_MODELSET
 
 # 人をダメにするクッション ----
@@ -437,6 +494,7 @@ MODELSET
 	INDEX = 1
 	POS = -130 10 315
 	ROT = 0 90 0
+	COLLISION = 2
 END_MODELSET
 
 # テレビ台 ----
@@ -461,6 +519,7 @@ MODELSET
 	INDEX = 1
 	POS = -200 0 200
 	ROT = 0 180 0
+	COLLISION = 2
 END_MODELSET
 
 # テレビ ----
@@ -501,6 +560,7 @@ MODELSET
 	INDEX = 1
 	POS = 75 0 0
 	ROT = 0 90 0
+	COLLISION = 2
 END_MODELSET
 
 # 本棚 ----
@@ -509,6 +569,7 @@ MODELSET
 	INDEX = 1
 	POS = 75 0 100
 	ROT = 0 90 0
+	COLLISION = 2
 END_MODELSET
 
 # 本棚用机 ----
@@ -517,6 +578,7 @@ MODELSET
 	INDEX = 1
 	POS = 45 0 50
 	ROT = 0 90 0
+	COLLISION = 2
 END_MODELSET
 
 # 段ボール ----
@@ -550,6 +612,7 @@ MODELSET
 	INDEX = 1
 	POS = 340 0 460
 	ROT = 0 90 0
+	COLLISION = 2
 END_MODELSET
 
 # プレゼントボックス ----
@@ -565,7 +628,8 @@ MODELSET
 	TYPE = 16
 	INDEX = 1
 	POS = 230 0 330
-	ROT = 0 0 0
+	ROT = 0 180 0
+	COLLISION = 2
 END_MODELSET
 
 # 子供用勉強机 ----
@@ -574,6 +638,7 @@ MODELSET
 	INDEX = 1
 	POS = 170 0 330
 	ROT = 0 180 0
+	COLLISION = 2
 END_MODELSET
 
 # 本棚 ----
@@ -582,6 +647,7 @@ MODELSET
 	INDEX = 1
 	POS = 325 0 325
 	ROT = 0 180 0
+	COLLISION = 2
 END_MODELSET
 
 # クローゼット ----
@@ -590,6 +656,7 @@ MODELSET
 	INDEX = 1
 	POS = 225 0 475
 	ROT = 0 0 0
+	COLLISION = 2
 END_MODELSET
 
 # 子供部屋の照明 ----

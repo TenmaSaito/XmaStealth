@@ -13,7 +13,7 @@
 //*************************************************************************************************
 //*** マクロ定義 ***
 //*************************************************************************************************
-#define MAX_MESH				(32)		// メッシュの最大設置数
+#define MAX_MESH				(64)		// メッシュの最大設置数
 #define MESHFIELD_SIZE_X		(300)		// ポリゴンの基本サイズ - X
 #define MESHFIELD_SIZE_Z		(300)		// ポリゴンの基本サイズ - Y
 #define MESHFIELD_SPD			(2.0f)		// ポリゴンの移動スピード
@@ -321,9 +321,10 @@ bool CollisionMeshField(D3DXVECTOR3* pPos, D3DXVECTOR3* pPosOld, D3DXVECTOR3* pM
 
 					vecMeshLine = (pos[1] + vecLine[1] * 0.5f) - pos[0];
 
-					vecToPosTriangle = *pPos - pos[0];
+					vecToPosTriangle = *pPosOld - pos[0];
 
 					fVecPosTriangle = (vecMeshLine.z * vecToPosTriangle.x) - (vecMeshLine.x * vecToPosTriangle.z);
+					PrintDebugProc("%f\n", fVecPosTriangle);
 
 					float fPosY = pos[0].y - ((1.0f / vecNor.y) * ((vecNor.x * (pPos->x - pos[0].x)) + (vecNor.z * (pPos->z - pos[0].z))));
 
@@ -350,8 +351,14 @@ bool CollisionMeshField(D3DXVECTOR3* pPos, D3DXVECTOR3* pPosOld, D3DXVECTOR3* pM
 					vecNor.z = (vecGai[0].x * vecGai[1].y) - (vecGai[0].y * vecGai[1].x);
 
 					vecNor *= -1;
-
 					D3DXVec3Normalize(&vecNor, &vecNor);
+
+					vecMeshLine = (pos[1] + vecLine[1] * 0.5f) - pos[0];
+
+					vecToPosTriangle = *pPosOld - pos[0];
+
+					fVecPosTriangle = (vecMeshLine.z * vecToPosTriangle.x) - (vecMeshLine.x * vecToPosTriangle.z);
+					PrintDebugProc("%f\n", fVecPosTriangle);
 
 					float fPosY = pos[0].y - ((1.0f / vecNor.y) * ((vecNor.x * (pPos->x - pos[0].x)) + (vecNor.z * (pPos->z - pos[0].z))));
 

@@ -40,5 +40,5 @@ void SetIndexTextureShadow(int nIndexTexture);
 void SetPositionShadow(int nIdShadow, D3DXVECTOR3 pos, D3DXVECTOR3 rot);
 void DestroyShadow(int nIdShadow);
 float AddShadowSize(int nIdShadow, SHADOW_SIZE type, float fValue);
-
+void InvisibleShadow(int nIdxShadow, float fAlpha);
 #endif

@@ -19,7 +19,7 @@
 #define MAX_OBJTEXTURE		(14)			// 読み込むテクスチャの最大数
 #define MAX_MOTION			(10)			// モーションの最大数
 #define MAX_KEY_INFO		(30)			// キー情報の最大数
-#define MAX_KEY				(20)	// キーの最大数
+#define MAX_KEY				(20)			// キーの最大数
 
 //*************************************************************************************************
 //*** モーションの種類 ***
@@ -141,9 +141,9 @@ void UninitObject(void);
 void UpdateObject(void);
 void DrawObject(void);
 
-HRESULT LoadObject(_In_ const char *pXFileName);
+_Check_return_ HRESULT LoadObject(_In_ const char *pXFileName);
 void SetObject(_In_ D3DXVECTOR3 pos, _In_ D3DXVECTOR3 rot, _In_ int nType, _In_ COLLISIONTYPE nTypeCollision = COLLISIONTYPE_RECT, _In_opt_ const char *pCode = NULL);
-bool CollisionObject(D3DXVECTOR3 *pPos, D3DXVECTOR3 *pPosOld, D3DXVECTOR3 *pMove);
+bool CollisionObject(D3DXVECTOR3 *pPos, D3DXVECTOR3 *pPosOld, D3DXVECTOR3 *pMove, float fHeight, bool* pColl = NULL);
 Object *GetObject(void);
 ObjectInfo *GetObjectInfo(_In_ int nType);
 D3DXVECTOR3 GetObjectMVector(int nType, int nXYZ);

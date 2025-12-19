@@ -7,7 +7,7 @@
 #ifndef _MAIN_H_				// このマクロ定義がされていなければ
 #define _MAIN_H_				// 2重インクルード防止のマクロを定義
 
-//#define _CRTDBG_MAP_ALLOC		// メモリリーク検知範囲拡大マクロ
+#define _CRTDBG_MAP_ALLOC		// メモリリーク検知範囲拡大マクロ
 
 //**********************************************************************************
 //*** インクルードファイル(DirectX関係) ***
@@ -18,7 +18,7 @@
 #include "dinput.h"							// 入力処理に必要(先に上のマクロを定義する)
 #include "xaudio2.h"						// サウンド処理に必要
 #include "xinput.h"							// ジョイパッド処理に必要
-#include "X3DAudio.h"
+#include "X3DAudio.h"						// 立体音響
 
 //**********************************************************************************
 //*** ライブラリのリンク ***
@@ -37,6 +37,7 @@
 #include <stdio.h>							// 標準入出力に必要
 #include <stdlib.h>							// 疑似乱数に必要
 #include <string.h>							// 文字列関連の処理に必要
+#include <sal.h>
 
 //**********************************************************************************
 //*** マクロ定義 ***
@@ -58,7 +59,7 @@
 #define LIGHTING(p, Enable)	{ (p)->SetRenderState(D3DRS_LIGHTING, Enable); }	// ライティングの有無効
 #define D3DX_2PI			(D3DX_PI * 2.0f)									// 角度の一周分
 #define D3DX_HALFPI			(D3DX_PI * 0.5f)									// 角度の1/4周分
-#define _PATHCHECK_NO_WARNINGS 
+// #define _PATHCHECK_NO_WARNINGS 
 
 #ifdef NDEBUG
 
@@ -131,6 +132,7 @@ LPDIRECT3DDEVICE9 GetDevice(void);
 void SetMode(MODE mode);
 MODE GetMode(void);
 MODE GetModeExac(void);
+MODE GetModeNext(void);
 HWND GetHandleWindow(void);
 void SetGameDifficulty(GAMEDIFFICULTY difficulty);
 GAMEDIFFICULTY GetGameDifficulty(void);

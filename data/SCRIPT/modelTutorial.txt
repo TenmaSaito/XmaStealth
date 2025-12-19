@@ -1,0 +1,214 @@
+#==============================================================================
+#
+# モデル設置スクリプトファイル [model.txt]
+# Author : TENMA SAITO
+#
+#==============================================================================
+SCRIPT		# 消すな
+
+#=================================================
+# 読み込むテクスチャファイル数
+#=================================================
+NUM_TEXTURE = 6
+
+#=================================================
+# テクスチャパス
+#=================================================
+TEXTURE_FILENAME = data/TEXTURE/field000.jpg		# [0]地面テクスチャ
+TEXTURE_FILENAME = data/TEXTURE/sky000.jpg			# [1]ソラ
+TEXTURE_FILENAME = data/TEXTURE/shadow000.jpg		# [2]エフェクト兼影テクスチャ
+TEXTURE_FILENAME = data/TEXTURE/Arrow.png			# [3]矢印
+TEXTURE_FILENAME = data/TEXTURE/Tutorial.png		# [4]チュートリアル
+TEXTURE_FILENAME = data/TEXTURE/gradation000.jpg	# [5]グラデーション
+
+#=================================================
+# 読み込むモデル数
+#================================================
+NUM_MODEL = 17
+
+#=================================================
+# Xファイルのパス
+#=================================================
+MODEL_FILENAME = data/MODEL/Object/XmasTree.x					# [0] クリスマスツリー
+MODEL_FILENAME = data/MODEL/Object/Ornaments/Ornament_0.x		# [1] オーナメント
+MODEL_FILENAME = data/MODEL/Object/Ornaments/Ornament_Star.x	# [2] ツリーの一番上にあるあの、あれさ。☆☆。
+MODEL_FILENAME = data/MODEL/Object/Ornaments/Ornament_cane.x	# [3] 何か飴の杖みたいなやつ
+MODEL_FILENAME = data/MODEL/Object/Ornaments/cookie.x		# [4] 美味しそうなジンジャークッキー
+MODEL_FILENAME = data/MODEL/Object/Ornaments/green_light.x	# [5] 何か光ってるやつ(緑)
+MODEL_FILENAME = data/MODEL/Object/Ornaments/red_light.x	# [6] 何か光ってるやつ(赤)
+MODEL_FILENAME = data/MODEL/Object/Ornaments/white_light.x	# [7] 何か光ってるやつ(白)
+MODEL_FILENAME = data/MODEL/Object/Ornaments/ornament_snowCrystal.x	# [8] 雪の結晶的なね。めっちゃ頑張った
+MODEL_FILENAME = data/MODEL/Object/Ornaments/ornament_snowman.x	# [9] 雪だるまつくーろー
+MODEL_FILENAME = data/MODEL/Object/Ornaments/ornament_santa's_hat.x	# [10] サンタの帽子です。はい。
+MODEL_FILENAME = data/MODEL/Object/Ornaments/ornament_ring.x	# [11] この時期なるとドア前によくかかってるあれ
+MODEL_FILENAME = data/MODEL/Object/Ornaments/trash_can.x		# [12] ゴミその一
+MODEL_FILENAME = data/MODEL/Object/Ornaments/trash_cokecola.x	# [13] ゴミその二
+MODEL_FILENAME = data/MODEL/Object/Ornaments/trash_potato.x		# [14] ゴミその三
+MODEL_FILENAME = data/MODEL/Object/Ornaments/present_box.x		# [15] プレゼントボックス
+MODEL_FILENAME = data/MODEL/Object/Ornaments/ornament_box.x		# [16] 仮配置用オーナメント
+
+#=================================================
+# カメラ設定
+#=================================================
+CAMERASET
+	POSV = 0 55 -300	# カメラの開始視点位置
+	POSR = 0 20 0		# カメラの開始注視点位置
+	ZLEN = 200			# カメラの開始注視点距離
+	VANGLE = 45			# カメラの視野角
+	ZN = 1				# カメラの描画開始距離
+	ZF = 10000			# カメラの描画限界距離
+	SPD = 5.0			# カメラの移動速度
+	ROTSPEED = 0.07		# カメラの回転速度
+END_CAMERASET
+
+#=================================================
+# エフェクト設定
+#=================================================
+EFFECTSET
+	TEXTYPE = 2		# エフェクトのテクスチャ
+END_EFFECTSET
+
+#=================================================
+# 影の設定
+#=================================================
+SHADOWSET
+	TEXTYPE = 2		# 影のテクスチャ
+END_SHADOWSET
+
+#=================================================
+# オーナメント用の詳細設定
+#=================================================
+ORNAMENTSET
+
+	NUM_ORNAMENT = 15	# 設定するオーナメント数
+
+	ORNAMENT
+		ISSTAR = 1		# スターか (0 = FALSE / 1 = TRUE / 2 = TRASH)
+		TYPE = 1		# モデル番号
+		RADIUS = 5.0	# 当たり判定の半径
+		WEIGHT = 50.0	# オーナメントの重量
+	END_ORNAMENT
+
+	ORNAMENT
+		ISSTAR = 0		# スターか (0 = FALSE / 1 = TRUE / 2 = TRASH)
+		TYPE = 2		# モデル番号
+		RADIUS = 5.0	# 当たり判定の半径
+		WEIGHT = 10.0	# オーナメントの重量
+	END_ORNAMENT
+
+	ORNAMENT
+		ISSTAR = 0		# スターか (0 = FALSE / 1 = TRUE / 2 = TRASH)
+		TYPE = 3		# モデル番号
+		RADIUS = 5.0	# 当たり判定の半径
+		WEIGHT = 5.0	# オーナメントの重量
+	END_ORNAMENT
+
+	ORNAMENT
+		ISSTAR = 0		# スターか (0 = FALSE / 1 = TRUE / 2 = TRASH)
+		TYPE = 4		# モデル番号
+		RADIUS = 5.0	# 当たり判定の半径
+		WEIGHT = 6.0	# オーナメントの重量
+	END_ORNAMENT
+
+	ORNAMENT
+		ISSTAR = 0		# スターか (0 = FALSE / 1 = TRUE / 2 = TRASH)
+		TYPE = 5		# モデル番号
+		RADIUS = 5.0	# 当たり判定の半径
+		WEIGHT = 6.0	# オーナメントの重量
+	END_ORNAMENT
+
+	ORNAMENT
+		ISSTAR = 0		# スターか (0 = FALSE / 1 = TRUE / 2 = TRASH)
+		TYPE = 6		# モデル番号
+		RADIUS = 5.0	# 当たり判定の半径
+		WEIGHT = 6.0	# オーナメントの重量
+	END_ORNAMENT
+
+	ORNAMENT
+		ISSTAR = 0		# スターか (0 = FALSE / 1 = TRUE / 2 = TRASH)
+		TYPE = 7		# モデル番号
+		RADIUS = 5.0	# 当たり判定の半径
+		WEIGHT = 6.0	# オーナメントの重量
+	END_ORNAMENT
+
+	ORNAMENT
+		ISSTAR = 0		# スターか (0 = FALSE / 1 = TRUE / 2 = TRASH)
+		TYPE = 8		# モデル番号
+		RADIUS = 5.0	# 当たり判定の半径
+		WEIGHT = 6.0	# オーナメントの重量
+	END_ORNAMENT
+
+	ORNAMENT
+		ISSTAR = 0		# スターか (0 = FALSE / 1 = TRUE / 2 = TRASH)
+		TYPE = 9		# モデル番号
+		RADIUS = 5.0	# 当たり判定の半径
+		WEIGHT = 6.0	# オーナメントの重量
+	END_ORNAMENT
+
+	ORNAMENT
+		ISSTAR = 0		# スターか (0 = FALSE / 1 = TRUE / 2 = TRASH)
+		TYPE = 10		# モデル番号
+		RADIUS = 5.0	# 当たり判定の半径
+		WEIGHT = 6.0	# オーナメントの重量
+	END_ORNAMENT
+
+	ORNAMENT
+		ISSTAR = 0		# スターか (0 = FALSE / 1 = TRUE / 2 = TRASH)
+		TYPE = 11		# モデル番号
+		RADIUS = 5.0	# 当たり判定の半径
+		WEIGHT = 6.0	# オーナメントの重量
+	END_ORNAMENT
+
+	ORNAMENT
+		ISSTAR = 0		# スターか (0 = FALSE / 1 = TRUE / 2 = TRASH)
+		TYPE = 12		# モデル番号
+		RADIUS = 5.0	# 当たり判定の半径
+		WEIGHT = 6.0	# オーナメントの重量
+	END_ORNAMENT
+
+	ORNAMENT
+		ISSTAR = 2		# スターか (0 = FALSE / 1 = TRUE / 2 = TRASH)
+		TYPE = 13		# モデル番号
+		RADIUS = 5.0	# 当たり判定の半径
+		WEIGHT = 6.0	# オーナメントの重量
+	END_ORNAMENT
+
+	ORNAMENT
+		ISSTAR = 2		# スターか (0 = FALSE / 1 = TRUE / 2 = TRASH)
+		TYPE = 14		# モデル番号
+		RADIUS = 5.0	# 当たり判定の半径
+		WEIGHT = 6.0	# オーナメントの重量
+	END_ORNAMENT
+
+	ORNAMENT
+		ISSTAR = 2		# スターか (0 = FALSE / 1 = TRUE / 2 = TRASH)
+		TYPE = 15		# モデル番号
+		RADIUS = 5.0	# 当たり判定の半径
+		WEIGHT = 6.0	# オーナメントの重量
+	END_ORNAMENT
+
+END_ORNAMENTSET
+
+#=================================================
+# 地面(芝生)
+#=================================================
+FIELDSET
+	TEXTYPE = 0
+	POS = 0 -1 0
+	ROT = 0 0 0
+	BLOCK = 100 100
+	SIZE = 50 50
+END_FIELDSET
+
+#=================================================
+# モデル設置
+#=================================================
+
+# クリスマスツリー ----
+XMASTREESET
+	TYPE = 0
+	POS = 0 0 300
+	ROT = 0 0 0
+END_XMASTREESET
+
+END_SCRIPT		# 消すな

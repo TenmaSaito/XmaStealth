@@ -43,7 +43,7 @@ bool g_bReverseDFirstLogo;				// 過去にタイトルロゴが反転表示されたか
 const LOGO g_aLogoInfo[] =
 {
 	{D3DXVECTOR3(640.0f - (LOGO_WIDTH * 0.5f), 75.0f + ANIMATION_TIME_C, 0.0f), D3DXCOLOR_INV, LOGO_WIDTH, 275.0f, LOGOTYPE_CHAR, 0, true},
-	{D3DXVECTOR3(640.0f - (LOGO_WIDTH * 0.5f), 220.0f, 0.0f), D3DXCOLOR_INV, LOGO_WIDTH, 50.0f, LOGOTYPE_UNDERLINE, 0, false}
+	{D3DXVECTOR3(640.0f - (LOGO_WIDTH * 0.5f), 320.0f, 0.0f), D3DXCOLOR_INV, LOGO_WIDTH, 50.0f, LOGOTYPE_UNDERLINE, 0, false}
 };
 
 //**********************************************************************************
@@ -51,7 +51,7 @@ const LOGO g_aLogoInfo[] =
 //**********************************************************************************
 const char* g_aLogoTex[]
 {
-	"data\\TEXTURE\\LOGO\\PreLogo.png",
+	"data\\TEXTURE\\LOGO\\Logo.png",
 	"data\\TEXTURE\\LOGO\\LOGO_SHOOTINGSTAR.png",
 };
 
@@ -310,16 +310,16 @@ void UpdateTitleLogo(void)
 		{
 			if (g_bReverseDFirstLogo == false)
 			{
-				pVtx[3].tex = D3DXVECTOR2(0.0f, 0.0f);
-				pVtx[2].tex = D3DXVECTOR2(1.0f, 0.0f);
-				pVtx[1].tex = D3DXVECTOR2(0.0f, 1.0f);
+				pVtx[3].tex = D3DXVECTOR2(0.01f, 0.01f);
+				pVtx[2].tex = D3DXVECTOR2(1.0f, 0.01f);
+				pVtx[1].tex = D3DXVECTOR2(0.01f, 1.0f);
 				pVtx[0].tex = D3DXVECTOR2(1.0f, 1.0f);
 			}
 			else
 			{
-				pVtx[0].tex = D3DXVECTOR2(0.0f, 0.0f);
-				pVtx[1].tex = D3DXVECTOR2(1.0f, 0.0f);
-				pVtx[2].tex = D3DXVECTOR2(0.0f, 1.0f);
+				pVtx[0].tex = D3DXVECTOR2(0.01f, 0.01f);
+				pVtx[1].tex = D3DXVECTOR2(1.0f, 0.01f);
+				pVtx[2].tex = D3DXVECTOR2(0.01f, 1.0f);
 				pVtx[3].tex = D3DXVECTOR2(1.0f, 1.0f);
 			}
 		}

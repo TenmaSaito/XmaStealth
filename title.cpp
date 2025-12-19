@@ -21,8 +21,6 @@
 #include "shadow.h"
 #include "wall.h"
 #include "billboard.h"
-#include "bullet.h"
-#include "explosion.h"
 #include "tree.h"
 #include "mesh.h"
 #include "cameraTitle.h"
@@ -49,8 +47,6 @@ void InitTitle(void)
 
 	/*** Aの初期化 ***/
 	InitCameraTitle();
-
-	InitLight();
 
 	/*** ロゴの初期化 ***/
 	InitTitleLogo();
@@ -184,7 +180,7 @@ void UpdateTitle(void)
 	{ // ゲーム画面へフェード
 		/*** 決定音を鳴らす ***/
 		PlaySound(SOUND_LABEL_SE_ENTER);
-		SetFade(MODE_GAME, FADE_TYPE_NORMAL);
+		SetFade(MODE_TUTORIAL, FADE_TYPE_NORMAL);
 
 		/*** ゲームBGMをフェードイン ***/
 		FadeSound(SOUND_LABEL_BGM_GAME);

@@ -55,6 +55,8 @@ HRESULT InitGame(void)
 	/*** 変数の初期化 ***/
 	g_bPause = false;
 
+	InitCamera();
+
 #ifdef DIRECTIONAL_LIGHT
 	InitLight();
 #elif SPOT_LIGHT // DIRECTIONAL_LIGHT
@@ -75,23 +77,19 @@ HRESULT InitGame(void)
 
 	InitEnemy();
 
-	InitBullet();
-
-	InitTree();
-
 	InitEffect();
 
 	InitExplosion();
 
 	InitMeshfield();
 
-	InitLine();
-
 	InitMeshCylinder();
 
 	InitMeshDome();
 
 	InitMeshSphere();
+
+	InitMeshRing();
 
 	InitOrnament();
 
@@ -107,20 +105,22 @@ HRESULT InitGame(void)
 		return E_FAIL;
 	}
 
-	if (FAILED(LoadMotion("data\\SCRIPT\\motion_parent.txt")))
+	if (FAILED(LoadMotion("data\\SCRIPT\\motion_bear.txt")))
 	{
 		GenerateMessageBox(MB_ICONERROR, "Error (0)", "LoadMotionに失敗しました。");
 		return E_FAIL;
 	}
 
-	SetOrnament(D3DXVECTOR3(0.0f, 0.0f, 0.0f), VECNULL, 0, 0.0f, 4.0f);
-	SetOrnament(D3DXVECTOR3(0.0f, 0.0f, 25.0f), VECNULL, 1, 0.0f, 4.0f);
-	SetOrnament(D3DXVECTOR3(0.0f, 0.0f, -50.0f), VECNULL, 2, 0.0f, 4.0f);
+	SetIndexTextureRing(8);
 
 	g_nCounterStateGame = 0;
 	g_nCounterGame = 0;
 	g_gameState = GAMESTATE_NORMAL;
 	SetTimer(120);
+
+	SetOrnamentRand(200);
+
+	SetPlayer(VECNULL, VECNULL, "");
 
 	return S_OK;
 }
@@ -130,6 +130,8 @@ HRESULT InitGame(void)
 //================================================================================================================
 void UninitGame(void)
 {
+	UninitCamera();
+
 	ResetCamera();
 
 	UninitField();
@@ -142,13 +144,9 @@ void UninitGame(void)
 
 	UninitEnemy();
 
-	UninitBullet();
-
 	UninitEffect();
 
 	UninitExplosion();
-
-	UninitTree();
 
 	UninitShadow();
 
@@ -158,13 +156,13 @@ void UninitGame(void)
 
 	UninitMeshfield();
 
-	UninitLine();
-
 	UninitMeshCylinder();
 
 	UninitMeshDome();
 
 	UninitMeshSphere();
+
+	UninitMeshRing();
 
 	UninitOrnament();
 
@@ -173,6 +171,8 @@ void UninitGame(void)
 	UninitXmasTree();
 
 	UninitTimer();
+
+	SetVibration(0, 0, 0);
 }
 
 //================================================================================================================
@@ -183,12 +183,12 @@ void UpdateGame(void)
 	/*** ゲームの状態により処理を変更 ***/
 	switch (g_gameState)
 	{
-		// 何もなし
+		 // 何もなし
 	case GAMESTATE_NONE:
 
 		break;
 
-		// 通常状態
+		 // 通常状態
 	case GAMESTATE_NORMAL:
 
 		break;
@@ -245,6 +245,8 @@ void UpdateGame(void)
 	/*** ポーズ状態でなければ更新 ***/
 	if (g_bPause == false)
 	{
+		UpdateCamera();
+
 		g_nCounterGame++;
 		if (g_nCounterGame % 60 == 0)
 		{
@@ -270,17 +272,11 @@ void UpdateGame(void)
 		/*** 敵の更新 ***/
 		UpdateEnemy();
 
-		/*** 弾の更新 ***/
-		UpdateBullet();
-
 		/*** エフェクトの更新 ***/
 		UpdateEffect();
 
 		/*** 爆発の更新 ***/
 		UpdateExplosion();
-
-		/*** 木の更新 ***/
-		UpdateTree();
 
 		/*** 影の更新 ***/
 		UpdateShadow();
@@ -294,11 +290,11 @@ void UpdateGame(void)
 		/*** メッシュフィールドの更新 ***/
 		UpdateMeshfield();
 
-		UpdateLine();
-
 		UpdateMeshCylinder();
 
 		UpdateMeshDome();
+
+		UpdateMeshRing();
 	}
 	
 	UpdateLight();
@@ -337,22 +333,14 @@ void DrawGame(void)
 	/*** オブジェクトの描画 ***/
 	DrawObject();
 
-	/*** 弾の描画 ***/
-	DrawBullet();
-
 	/*** 爆発の描画 ***/
 	DrawExplosion();
-
-	/*** 木の描画 ***/
-	DrawTree();
 
 	/*** メッシュフィールドの描画 ***/
 	DrawMeshfield();
 
 	/*** 影の描画 ***/
 	DrawShadow();
-
-	DrawLine();
 
 	DrawOrnament();
 
@@ -363,6 +351,8 @@ void DrawGame(void)
 	DrawMeshDome();
 
 	DrawMeshSphere();
+
+	DrawMeshRing();
 
 	/*** エフェクトの描画 ***/
 	DrawEffect();

@@ -145,6 +145,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="2Dpolygon.cpp" />
     <ClCompile Include="billboard.cpp" />
     <ClCompile Include="bullet.cpp" />
     <ClCompile Include="camera.cpp" />
@@ -170,11 +171,13 @@
     <ClCompile Include="meshCylinder.cpp" />
     <ClCompile Include="meshDome.cpp" />
     <ClCompile Include="meshfield.cpp" />
+    <ClCompile Include="meshRing.cpp" />
     <ClCompile Include="meshSphere.cpp" />
     <ClCompile Include="object.cpp" />
     <ClCompile Include="ornament.cpp" />
     <ClCompile Include="pause.cpp" />
     <ClCompile Include="player.cpp" />
+    <ClCompile Include="polygon.cpp" />
     <ClCompile Include="pressEnter.cpp" />
     <ClCompile Include="ranking.cpp" />
     <ClCompile Include="rankingScore.cpp" />
@@ -185,10 +188,12 @@
     <ClCompile Include="title.cpp" />
     <ClCompile Include="titleLogo.cpp" />
     <ClCompile Include="tree.cpp" />
+    <ClCompile Include="tutorial.cpp" />
     <ClCompile Include="wall.cpp" />
     <ClCompile Include="XmasTree.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="2Dpolygon.h" />
     <ClInclude Include="billboard.h" />
     <ClInclude Include="bullet.h" />
     <ClInclude Include="camera.h" />
@@ -215,24 +220,33 @@
     <ClInclude Include="meshCylinder.h" />
     <ClInclude Include="meshDome.h" />
     <ClInclude Include="meshfield.h" />
+    <ClInclude Include="meshRing.h" />
     <ClInclude Include="meshSphere.h" />
     <ClInclude Include="object.h" />
     <ClInclude Include="ornament.h" />
     <ClInclude Include="pause.h" />
     <ClInclude Include="player.h" />
+    <ClInclude Include="polygon.h" />
     <ClInclude Include="pressEnter.h" />
     <ClInclude Include="ranking.h" />
     <ClInclude Include="rankingScore.h" />
     <ClInclude Include="shadow.h" />
     <ClInclude Include="sound.h" />
     <ClInclude Include="spotlight.h" />
-    <ClInclude Include="stair.h" />
     <ClInclude Include="timer.h" />
     <ClInclude Include="title.h" />
     <ClInclude Include="titleLogo.h" />
     <ClInclude Include="tree.h" />
+    <ClInclude Include="tutorial.h" />
     <ClInclude Include="wall.h" />
     <ClInclude Include="XmasTree.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="data\SCRIPT\model.txt" />
+    <Text Include="data\SCRIPT\modelTitle.txt" />
+    <Text Include="data\SCRIPT\motion_bear.txt" />
+    <Text Include="data\SCRIPT\motion_child.txt" />
+    <Text Include="data\SCRIPT\motion_parent.txt" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

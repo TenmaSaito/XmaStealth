@@ -10,9 +10,7 @@
 //**********************************************************************************
 //*** インクルードファイル ***
 //**********************************************************************************
-#include "main.h"
-#include "input.h"
-#include "camera.h"
+#include "game.h"
 #include "object.h"
 
 //**********************************************************************************
@@ -29,20 +27,26 @@ typedef struct
 	D3DXVECTOR3 posOld;					// 過去の位置
 	D3DXVECTOR3 move;					// モデルの移動量
 	D3DXVECTOR3 rot;					// モデルの向き
+
 	float fSpd;							// 移動速度
 	float fJump;						// 跳躍力
+
 	float fWidth;						// モデルの幅
 	float fHeight;						// モデルの高さ
 	float fDepth;						// モデルの奥行
 	float fRadius;						// 半径
 	int nIdShadow;						// 影の番号
 	int nIdOrnament;					// 現在つかんでいるオーナメントのインデックス
+	int nIdx2DPolygon;					// チュートリアル用ポリゴンインデックス
 	bool bDisp;							// 描画の有無
 	bool bUse;							// 読み込みに成功しているか
 	bool bJump;							// 跳んだか
+
 	D3DXMATRIX mtxWorld;				// ワールドマトリックス
 	PartsInfo aModel[15];				// モデルアニメーション情報(パーツ)
 	int nNumModel;						// モデル数
+	int nModelHead;						// 頭のインデックス
+	int nModelHand;						// オーナメントをつかむ手のインデックス
 
 	MOTION_INFO aMotionInfo[MAX_MOTION];// モーションの情報
 	int nNumMotion;						// モーションの総数
@@ -79,6 +83,7 @@ void SetMotionNum(int nMotionNum);
 
 void SetCollisionSize(float fRadius, float fHeight);
 void SetPlayerSetting(float fMove, float fJump);
+void SetPlayerPartsIndices(int nIdxHead, int nIdxHand);
 void SetPlayer(D3DXVECTOR3 pos, D3DXVECTOR3 rot, const char *pMotionName);
 // void SetMotionPlayer(MOTIONTYPE motionType);
 Player *GetPlayer(void);

@@ -8,6 +8,7 @@
 //*** インクルードファイル ***
 //**********************************************************************************
 #include "player.h"
+#include "camera.h"
 #include "mathUtil.h"
 #include "shadow.h"
 #include "wall.h"
@@ -15,11 +16,11 @@
 #include "bullet.h"
 #include "effect.h"
 #include "explosion.h"
-#include "object.h"
 #include "debugproc.h"
 #include "line.h"
 #include "mesh.h"
 #include "ornament.h"
+#include "2Dpolygon.h"
 
 //*************************************************************************************************
 //*** マクロ定義 ***
@@ -33,12 +34,15 @@
 #define MOVE_ACCELE			(5.0f)		// 加速係数
 #define MOVE_RESIST			(0.5f)		// 減速係数
 #define MAX_TAKECOPTER_SPD	(1.57f)		// タケコプターの最大回転速度
+#define MAX_CATCH_ORNAMENT	(10)		// 一度に持てるオーナメントの最大数
 
 //*************************************************************************************************
 //*** プロトタイプ宣言 ***
 //*************************************************************************************************
 void SetMotionType(MOTIONTYPE motionTypeNext, bool bBlend, int nFrameBlend);
 void UpdateMotion(void);
+bool CatchOrnament(int nIdOrnament);
+int ThrowOrnament(void);
 
 //*************************************************************************************************
 //*** グローバル変数 ***
@@ -51,6 +55,8 @@ float g_fSinCurve;									// プレイヤーの縦移動時のサインカーブ用角度
 float g_fMoveAccele;								// 前方へ進行した場合の前傾姿勢用角度
 bool g_bUseSinCurve;								// プレイヤーの上下移動の有無
 int g_nCounterPlayer;								// カウンター
+int g_nCntPlayerOrnament;							// プレイヤーの保持しているオーナメント
+int g_aOrnamentShot[MAX_CATCH_ORNAMENT];			// 掴んだオーナメント順のid
 
 //================================================================================================================
 // --- Xファイル表示の初期化処理 ---
@@ -62,6 +68,7 @@ void InitPlayer(void)
 	Player *pPlayer = &g_player;		// プレイヤー情報へのアドレス
 
 	/*** 各変数の初期化 ***/
+	ZeroMemory(&g_player, sizeof(Player));
 	pPlayer->pos = D3DXVECTOR3_NULL;
 	pPlayer->posOld = D3DXVECTOR3_NULL;
 	pPlayer->move = D3DXVECTOR3_NULL;
@@ -85,7 +92,11 @@ void InitPlayer(void)
 	pPlayer->motionType = MOTIONTYPE_NEUTRAL;
 	pPlayer->nCounterMotion = 0;
 	pPlayer->nKey = 0;
+	pPlayer->nIdx2DPolygon = -1;
 	g_nCounterPlayer = 0;
+	g_nCntPlayerOrnament = 0;
+
+	memset(&g_aOrnamentShot[0], -1, sizeof(int) * MAX_CATCH_ORNAMENT);
 }
 
 //================================================================================================================
@@ -205,6 +216,22 @@ void UpdatePlayer(void)
 
 		bPushKey = true;
 	}
+
+	int nValueH, nValueV;
+	if(GetJoyThumbValue(&nValueH, &nValueV, JOYTHUMB_LEFT))
+	{
+		float fAngle = 0.0f;
+
+		fAngle = atan2f((float)nValueH, (float)nValueV);
+
+		/** カメラの角度に合わせて、平行移動！ **/
+		pPlayer->move.z += cosf(pCamera->rot.y + fAngle) * (sqrtf(powf(((float)nValueH / 32767), 2.0f) + powf((float)nValueV / 32767, 2.0f))) * pPlayer->fSpd;
+		pPlayer->move.x += sinf(pCamera->rot.y + fAngle) * (sqrtf(powf(((float)nValueH / 32767), 2.0f) + powf((float)nValueV / 32767, 2.0f))) * pPlayer->fSpd;
+
+		/** カメラの角度に合わせて、モデルの目標角度を求める！ **/
+		g_fAnglePlayer = (pCamera->rot.y + (fAngle + D3DX_PI));
+		bPushKey = true;
+	}
 	
 	if (bPushKey == true 
 		&& pPlayer->motionType != MOTIONTYPE_MOVE
@@ -226,16 +253,6 @@ void UpdatePlayer(void)
 		SetMotionType(MOTIONTYPE_NEUTRAL, true, 10);
 	}
 
-	if (GetJoyThumbWASD() == true)
-	{
-		/** カメラの角度に合わせて、平行移動！ **/
-		pPlayer->move.z += cosf(pCamera->rot.y + GetJoyThumbAngle(JOYTHUMB_LEFT)) * (sqrtf(powf((GetJoyThumbPow(JOYTHUMB_LEFT + JOYTHUMB_X) / 32767), 2.0f) + powf(GetJoyThumbPow(JOYTHUMB_LEFT + JOYTHUMB_Y) / 32767, 2.0f))) * pPlayer->fSpd;
-		pPlayer->move.x += sinf(pCamera->rot.y + GetJoyThumbAngle(JOYTHUMB_LEFT)) * (sqrtf(powf((GetJoyThumbPow(JOYTHUMB_LEFT + JOYTHUMB_X) / 32767), 2.0f) + powf(GetJoyThumbPow(JOYTHUMB_LEFT + JOYTHUMB_Y) / 32767, 2.0f))) * pPlayer->fSpd;
-
-		/** カメラの角度に合わせて、モデルの目標角度を求める！ **/
-		g_fAnglePlayer = (pCamera->rot.y + (GetJoyThumbAngle(JOYTHUMB_LEFT) + D3DX_PI));
-	}
-
 #endif
 	effectPos = pPlayer->pos;
 	effectPos.y += 6.0f;
@@ -244,49 +261,6 @@ void UpdatePlayer(void)
 	if (bPushKey == true)
 	{
 		//SetEffect(effectPos, D3DXVECTOR3(0.0f, 0.0f, 0.0f), 0.0f);
-	}
-
-	/*** モデルの高さ変更処理！ ***/
-	if (GetKeyboardPress(DIK_7))
-	{ // 7を押したとき
-		pPlayer->move.y = 0.0f;
-		pPlayer->pos.y += 1.0f;
-	}
-	else if (GetKeyboardPress(DIK_8))
-	{ // 8を押したとき
-		pPlayer->move.y = 0.0f;
-		pPlayer->pos.y -= 1.0f;
-	}
-
-	if (GetKeyboardRepeat(DIK_4))
-	{
-		g_fTakecopterSpeed += 0.01f;
-		if (g_fTakecopterSpeed >= MAX_TAKECOPTER_SPD)
-		{
-			g_fTakecopterSpeed = MAX_TAKECOPTER_SPD;
-		}
-	}
-	else if (GetKeyboardRepeat(DIK_5))
-	{
-		g_fTakecopterSpeed -= 0.01f;
-		if (g_fTakecopterSpeed <= -MAX_TAKECOPTER_SPD)
-		{
-			g_fTakecopterSpeed = -MAX_TAKECOPTER_SPD;
-		}
-	}
-
-	if (GetKeyboardTrigger(DIK_F9))
-	{
-		g_bUseSinCurve = g_bUseSinCurve ^ true;
-	}
-
-	if (g_bUseSinCurve == true)
-	{
-		g_fSinCurve += 0.05f;
-		/*** 角度の修正! ***/
-		RepairRot(&g_fSinCurve, &g_fSinCurve);
-
-		pPlayer->pos.y += 0.5f * sinf(g_fSinCurve);
 	}
 
 	pPlayer->aModel[1].rotLocal.y += g_fTakecopterSpeed;
@@ -316,8 +290,8 @@ void UpdatePlayer(void)
 
 	/*** 落下防止処理 ***/
 
-	/*** 弾発射処理 ***/
-	if ((GetKeyboardTrigger(DIK_SPACE) || GetJoypadTrigger(JOYKEY_RIGHTTRIGGER))
+	/*** 跳躍処理 ***/
+	if ((GetKeyboardTrigger(DIK_SPACE) || GetJoypadTrigger(JOYKEY_A))
 		&& pPlayer->bJump == false)
 	{
 		/*** 各変数の初期化 ***/
@@ -328,7 +302,7 @@ void UpdatePlayer(void)
 	}
 
 	/*** アクション！ ***/
-	if (GetKeyboardTrigger(DIK_RETURN)
+	if ((GetKeyboardTrigger(DIK_RETURN) || GetJoypadTrigger(JOYKEY_RIGHTTRIGGER))
 		&& g_player.motionType != MOTIONTYPE_JUMP
 		&& pPlayer->motionTypeBlend != MOTIONTYPE_JUMP)
 	{
@@ -336,21 +310,21 @@ void UpdatePlayer(void)
 		SetMotionType(MOTIONTYPE_ACTION, true, 10);
 	}
 
-	if (GetKeyboardTrigger(DIK_BACK))
+	if (GetKeyboardTrigger(DIK_RETURN) || GetJoypadTrigger(JOYKEY_RIGHTTRIGGER))
 	{
-		if (pPlayer->nIdOrnament != -1)
-		{
-			ShotOrnament(pPlayer->nIdOrnament, pPlayer->rot, 5.0f);
-		}
+		D3DXVECTOR3 vec = pCamera->rot;
+		vec.y = RepairRot(vec.y += D3DX_PI);
+
+		ShotOrnament(ThrowOrnament(), vec, 5.0f);
+		SetVibration(0, 20000, 60);
 	}
 
-	if (GetKeyboardTrigger(DIK_RETURN))
+	if (g_nCntPlayerOrnament < MAX_CATCH_ORNAMENT)
 	{
 		int nIdxCollision = CollisionOrnament(pPlayer->pos);
 		if (nIdxCollision != -1)
 		{
-			SetParentOrnament(nIdxCollision, &pPlayer->mtxWorld);
-			pPlayer->nIdOrnament = nIdxCollision;
+			CatchOrnament(nIdxCollision);
 		}
 	}
 
@@ -360,28 +334,8 @@ void UpdatePlayer(void)
 	pPlayer->pos.z += pPlayer->move.z;
 
 	/*** 床下判定 ***/
-	/*if ((pPlayer->pos.x > 50.0f && pPlayer->pos.z > -100.0f
-		&& pPlayer->pos.x <= 100.0f && pPlayer->pos.z < 48.5f) != true)
-	{
-		if (pPlayer->pos.x >= -420.0f && pPlayer->pos.x <= 120.0f
-			&& pPlayer->pos.z >= -420.0f && pPlayer->pos.z <= 195.0f)
-		{
-			if (pPlayer->posOld.y >= 187.0f && pPlayer->pos.y <= 187.0f)
-			{
-				pPlayer->pos.y = 187.0f;
-				pPlayer->move.y = 0.0f;
-
-				if (pPlayer->bJump == true)
-				{
-					pPlayer->bJump = false;
-					SetMotionType(MOTIONTYPE_LANDING, true, 10);
-				}
-			}
-		}
-	}*/
-
 	if (pPlayer->pos.y <= 0.0f)
-	{
+	{ 
 		pPlayer->pos.y = 0.0f;
 		pPlayer->move.y = 0.0f;
 
@@ -394,7 +348,7 @@ void UpdatePlayer(void)
 
 	PrintDebugProc("PMOVE %f\n", pPlayer->move.y);
 
-	if (CollisionObject(&pPlayer->pos, &pPlayer->posOld, &pPlayer->move) == true)
+	if (CollisionObject(&pPlayer->pos, &pPlayer->posOld, &pPlayer->move, pPlayer->fHeight) == true)
 	{
 		if (pPlayer->bJump == true)
 		{
@@ -403,28 +357,32 @@ void UpdatePlayer(void)
 		}
 	}
 
-	CollisionWall(&pPlayer->pos, &pPlayer->posOld, &pPlayer->move);
-	
-	if (CollisionFloor(&pPlayer->pos, &pPlayer->posOld, &pPlayer->move, pPlayer->fHeight))
+	if (GetMode() == MODE_GAME)
 	{
-		pPlayer->move.y = 0.0f;
+		CollisionWall(&pPlayer->pos, &pPlayer->posOld, &pPlayer->move);
 
-		if (pPlayer->bJump == true)
+		if (CollisionFloor(&pPlayer->pos, &pPlayer->posOld, &pPlayer->move, pPlayer->fHeight)
+			&& pPlayer->pos.y > 0.0f)
 		{
-			pPlayer->bJump = false;
-			SetMotionType(MOTIONTYPE_LANDING, true, 10);
-		}
-	}
+			pPlayer->move.y = 0.0f;
 
-	if (CollisionMeshField(&pPlayer->pos, &pPlayer->posOld, &pPlayer->move))
-	{
-		if(pPlayer->bJump == true)
+			if (pPlayer->bJump == true)
+			{
+				pPlayer->bJump = false;
+				SetMotionType(MOTIONTYPE_LANDING, true, 10);
+			}
+		}
+
+		if (CollisionMeshField(&pPlayer->pos, &pPlayer->posOld, &pPlayer->move))
 		{
-			pPlayer->bJump = false;
-			SetMotionType(MOTIONTYPE_LANDING, true, 10);
+			if (pPlayer->bJump == true)
+			{
+				pPlayer->bJump = false;
+				SetMotionType(MOTIONTYPE_LANDING, true, 10);
+			}
 		}
-	}
 
+	}
 
 	/*** これを判定の上に書くと、オブジェクトの判定を食らわなくなるから注意(Y座標が範囲外に行くことが原因) ***/
 	pPlayer->move.y += WORLD_GRAVITY;
@@ -444,6 +402,7 @@ void UpdatePlayer(void)
 	PrintDebugProc("Pos[0] / %~3f\n", pPlayer->aModel[0].pos.x, pPlayer->aModel[0].pos.y, pPlayer->aModel[0].pos.z);
 
 	// 予測線 ======================
+#if 0
 	posStart = pPlayer->pos;
 	posStart.y = pPlayer->pos.y;
 	posEnd.x = pPlayer->pos.x + sinf(pPlayer->rot.y + D3DX_PI) * 10000.0f;
@@ -470,7 +429,7 @@ void UpdatePlayer(void)
 	pos.z = posMove.z;
 
 	SetLine(posReflectAnothor, pos, D3DXCOLOR(1.0f, 0.0f, 1.0f, 1.0f));
-
+#endif
 	// 予測線終了 ======================
 
 	/*** モーションの更新! ***/
@@ -481,35 +440,70 @@ void UpdatePlayer(void)
 
 	g_nCounterPlayer++;
 
-	/*** 万が一に備えて、ステージの壁を設定 ***/
-	if (pPlayer->pos.z > 500.0f)
-	{ // ステージの絶対的な奥行き
-		pPlayer->pos.z = 500.0f;
-	}
-
-	if (pPlayer->pos.z < -400.0f)
-	{ // ステージの絶対的な奥行き(後ろ)
-		pPlayer->pos.z = -400.0f;
-	}
-
-	if (pPlayer->pos.x < -400.0f)
-	{ // ステージの絶対的な左端
-		pPlayer->pos.x = -400.0f;
-	}
-
-	if (pPlayer->pos.x > 400.0f)
-	{ // ステージの絶対的な右端
-		pPlayer->pos.x = 400.0f;
-	}
-
-	if (pPlayer->pos.z < 300.0f && pPlayer->pos.x > 100.0f)
-	{ // リビングの右端
-		pPlayer->pos.x = 100.0f;
-	}
-
-	if (pPlayer->pos.x > 100.0f && pPlayer->pos.z < 300.0f)
+	/*** チュートリアル表示用 ***/
+	if (GetMode() == MODE_TUTORIAL
+		&& g_nCntPlayerOrnament <= 0)
 	{
-		pPlayer->pos.z = 300.0f;
+		Destroy2DPolygon(pPlayer->nIdx2DPolygon);
+		pPlayer->nIdx2DPolygon = -1;
+	}
+
+	/*** 万が一に備えて、ステージの壁を設定 ***/
+	if (GetMode() == MODE_GAME)
+	{
+		if (pPlayer->pos.z > 500.0f)
+		{ // ステージの絶対的な奥行き
+			pPlayer->pos.z = 500.0f;
+		}
+
+		if (pPlayer->pos.z < -400.0f)
+		{ // ステージの絶対的な奥行き(後ろ)
+			pPlayer->pos.z = -400.0f;
+		}
+
+		if (pPlayer->pos.x < -400.0f)
+		{ // ステージの絶対的な左端
+			pPlayer->pos.x = -400.0f;
+		}
+
+		if (pPlayer->pos.x > 400.0f)
+		{ // ステージの絶対的な右端
+			pPlayer->pos.x = 400.0f;
+		}
+
+		if (pPlayer->pos.z < 295.0f && pPlayer->pos.x > 100.0f)
+		{ // リビングの右端
+			pPlayer->pos.x = 100.0f;
+		}
+
+		if (pPlayer->pos.x > 100.0f && pPlayer->pos.z < 300.0f)
+		{
+			pPlayer->pos.z = 300.0f;
+		}
+	}
+	else if (GetMode() == MODE_TUTORIAL)
+	{
+		D3DXVECTOR4 rect = D3DXVECTOR4(-500.0f, 500.0f, -200.0f, 700.0f);
+		if (!CollisionBoxZ(rect, pPlayer->pos))
+		{
+			if (pPlayer->pos.x <= -500.0f)
+			{
+				pPlayer->pos.x = -500.0f;
+			}
+			else if (pPlayer->pos.x >= 500.0f)
+			{
+				pPlayer->pos.x = 500.0f;
+			}
+
+			if (pPlayer->pos.z <= -200.0f)
+			{
+				pPlayer->pos.z = -200.0f;
+			}
+			else if (pPlayer->pos.z >= 700.0f)
+			{
+				pPlayer->pos.z = 700.0f;
+			}
+		}
 	}
  }
 
@@ -727,6 +721,17 @@ void UpdateMotion(void)
 			SetMotionType(pPlayer->motionTypeBlend, false, 0);
 		}
 	}
+
+	PrintDebugProc("IDX : %~9d\n",
+		g_aOrnamentShot[0],
+		g_aOrnamentShot[1], 
+		g_aOrnamentShot[2], 
+		g_aOrnamentShot[3], 
+		g_aOrnamentShot[4], 
+		g_aOrnamentShot[5], 
+		g_aOrnamentShot[6], 
+		g_aOrnamentShot[7], 
+		g_aOrnamentShot[8]);
 }
 
 //================================================================================================================
@@ -906,6 +911,15 @@ void SetMotionType(MOTIONTYPE motionTypeNext, bool bBlend, int nFrameBlend)
 		return;
 	}
 
+	if (motionTypeNext == MOTIONTYPE_LANDING 
+		&& pPlayer->motionType != MOTIONTYPE_LANDING
+		&& pPlayer->motionTypeBlend != MOTIONTYPE_LANDING)
+	{
+		Vec3(pos = pPlayer->pos);
+		pos.y = pPlayer->pos.y + 0.5f;
+		SetMeshRing(pos, VECNULL, 0.0f, 1.0f, 8, 2.15f, 2.5f, 25);
+	}
+
 	pPlayer->bBlendMotion = bBlend;
 	
 	if (bBlend == false)
@@ -1041,4 +1055,104 @@ void SetPlayerSetting(float fMove, float fJump)
 Player* GetPlayer(void)
 {
 	return &g_player;
+}
+
+//================================================================================================================
+// --- オーナメントの取得 ---
+//================================================================================================================
+bool CatchOrnament(int nIdOrnament)
+{
+	Player *pPlayer = &g_player;		// プレイヤー情報へのアドレス
+
+	if (g_nCntPlayerOrnament >= MAX_CATCH_ORNAMENT) return false;
+
+	for (int nCntCheck = 0; nCntCheck < g_nCntPlayerOrnament; nCntCheck++)
+	{
+		if (g_aOrnamentShot[nCntCheck] == nIdOrnament) return false;
+	}
+
+	if (nIdOrnament == -1) return false;
+
+	g_aOrnamentShot[g_nCntPlayerOrnament] = nIdOrnament;
+
+	if (g_nCntPlayerOrnament != 0)
+	{
+		PORNAMENT pOrnament = GetOrnament(nIdOrnament);
+		if (pOrnament != NULL)
+		{ // オーナメントの親マトリックスを頭に設定
+			SetParentOrnament(nIdOrnament, &pPlayer->aModel[pPlayer->nModelHead].mtxWorld);
+			
+			// オフセットを頭の上に設定
+			pOrnament->pos.y = 15.0f * g_nCntPlayerOrnament;
+		}
+	}
+	else
+	{ // オーナメントの親マトリックスを手に設定
+		PORNAMENT pOrnament = GetOrnament(nIdOrnament);
+		if (pOrnament != NULL)
+		{
+			pOrnament->pos = VECNULL;
+			SetParentOrnament(nIdOrnament, &pPlayer->aModel[pPlayer->nModelHand].mtxWorld);
+		}
+	}
+
+	g_nCntPlayerOrnament++;
+	if (pPlayer->nIdx2DPolygon == -1)
+	{
+		pPlayer->nIdx2DPolygon = Set2DPolygon(D3DXVECTOR3(1000.0f, 550.0f, 0.0f), VECNULL, D3DXVECTOR2(400.0f, 200.0f), 4);
+	}
+
+	return true;
+}
+
+//================================================================================================================
+// --- オーナメントの発射 ---
+//================================================================================================================
+int ThrowOrnament(void)
+{
+	Player *pPlayer = &g_player;		// プレイヤー情報へのアドレス
+	int nIdShotOrnament = g_aOrnamentShot[0];
+
+	if (g_nCntPlayerOrnament == 0) return -1;
+
+	for (int nCntOrnament = 0; nCntOrnament < MAX_CATCH_ORNAMENT; nCntOrnament++)
+	{
+		if (nCntOrnament == (MAX_CATCH_ORNAMENT - 1))
+		{ // 開いた枠を-1で埋める
+			g_aOrnamentShot[nCntOrnament] = -1;
+		}
+		else
+		{
+			g_aOrnamentShot[nCntOrnament] = g_aOrnamentShot[nCntOrnament + 1];
+			PORNAMENT pOrnament = GetOrnament(g_aOrnamentShot[nCntOrnament]);
+			if (pOrnament != NULL)
+			{
+				if (nCntOrnament == 0)
+				{ // 親マトリックスを頭から手に変更
+					pOrnament->pos = VECNULL;
+					pOrnament->bReady = true;
+					RemoveParentOrnament(g_aOrnamentShot[nCntOrnament]);
+					SetParentOrnament(g_aOrnamentShot[nCntOrnament], &pPlayer->aModel[pPlayer->nModelHand].mtxWorld);
+				}
+				else
+				{
+					pOrnament->pos.y = 15.0f * nCntOrnament;
+				}
+			}
+		}
+	}
+
+	g_nCntPlayerOrnament--;
+	return nIdShotOrnament;
+}
+
+//================================================================================================================
+// --- インデックスの設定 ---
+//================================================================================================================
+void SetPlayerPartsIndices(int nIdxHead, int nIdxHand)
+{
+	Player *pPlayer = &g_player;		// プレイヤー情報へのアドレス
+
+	pPlayer->nModelHead = nIdxHead;
+	pPlayer->nModelHand = nIdxHand;
 }

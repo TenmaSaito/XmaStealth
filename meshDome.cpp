@@ -114,12 +114,6 @@ void DrawMeshDome(void)
 	{
 		if (pDome->bUse == true)
 		{
-			// 現在のカリングタイプを取得
-			// pDevice->GetRenderState(D3DRS_CULLMODE, &cullDef);
-
-			// カリングタイプを設定
-			// pDevice->SetRenderState(D3DRS_CULLMODE, pDome->cullType);
-
 			/*** ワールドマトリックスの初期化 ***/
 			D3DXMatrixIdentity(&pDome->mtxWorld);
 

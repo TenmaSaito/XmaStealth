@@ -64,7 +64,7 @@ SOUNDINFO g_aSoundInfo[SOUND_LABEL_MAX] =
 	{"data/BGM/BGM_TITLE_TEST.wav", -1, D3DXVECTOR3_NULL, D3DXVECTOR3_NULL, D3DXVECTOR3_NULL, false},		// タイトル画面のBGM
 	{"data/BGM/BGM_TITLE_TEST.wav", -1, D3DXVECTOR3_NULL, D3DXVECTOR3_NULL, D3DXVECTOR3_NULL, false},		// タイトル画面のBGM
 	{"data/BGM/BGM_CHILL.wav", -1, D3DXVECTOR3_NULL, D3DXVECTOR3_NULL, D3DXVECTOR3_NULL, false},		// タイトル画面のBGM
-	{"data/SE/SE_ENTER.wav", -1, D3DXVECTOR3_NULL, D3DXVECTOR3_NULL, D3DXVECTOR3_NULL, false},		// 決定音
+	{"data/SE/SE_ENTER.wav", 0, D3DXVECTOR3_NULL, D3DXVECTOR3_NULL, D3DXVECTOR3_NULL, false},		// 決定音
 };
 
 //=============================================================================

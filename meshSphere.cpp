@@ -9,6 +9,7 @@
 //**********************************************************************************
 #include "meshSphere.h"
 #include "effect.h"
+#include "XmasTree.h"
 
 //*************************************************************************************************
 //*** マクロ定義 ***
@@ -68,7 +69,18 @@ void UninitMeshSphere(void)
 void UpdateMeshSphere(void)
 {
 	LPMESHSPHERE pSphere = &g_aMeshSphere[0];
+	PXMASTREE pXmas = GetXmasTree();
+	D3DXMATRIX mtxSphere;
 	D3DXMATRIX mtxRot, mtxTrans;		// 計算用マトリックス
+
+	for (int nCntSphere = 0; nCntSphere < MAX_MESH; nCntSphere++, pSphere++)
+	{
+		if ((pSphere->bCollision == true)
+			&& GetMode() == MODE_GAME)
+		{
+			
+		}
+	}
 }
 
 //================================================================================================================
@@ -94,7 +106,7 @@ void DrawMeshSphere(void)
 
 	for (int nCntRelease = 0; nCntRelease < MAX_MESH; nCntRelease++, pSphere++)
 	{
-		if (pSphere->bUse == true && pSphere->bDisp == true)
+		if (pSphere->bUse == true)
 		{
 			/*** ワールドマトリックスの初期化 ***/
 			D3DXMatrixIdentity(&pSphere->mtxWorld);
@@ -123,41 +135,44 @@ void DrawMeshSphere(void)
 			/*** ワールドマトリックスの設定 ***/
 			pDevice->SetTransform(D3DTS_WORLD, &pSphere->mtxWorld);
 
-			/*** 頂点バッファをデータストリームに設定 ***/
-			pDevice->SetStreamSource(0, pSphere->pVtxBuff, 0, sizeof(VERTEX_3D));
+			if (pSphere->bDisp == true)
+			{
+				/*** 頂点バッファをデータストリームに設定 ***/
+				pDevice->SetStreamSource(0, pSphere->pVtxBuff, 0, sizeof(VERTEX_3D));
 
-			/*** インデックスバッファをデータストリームに設定 ***/
-			pDevice->SetIndices(pSphere->pIdxBuff);
+				/*** インデックスバッファをデータストリームに設定 ***/
+				pDevice->SetIndices(pSphere->pIdxBuff);
 
-			/*** 頂点フォーマットの設定 ***/
-			pDevice->SetFVF(FVF_VERTEX_3D);
+				/*** 頂点フォーマットの設定 ***/
+				pDevice->SetFVF(FVF_VERTEX_3D);
 
-			/*** テクスチャの設定 ***/
-			pDevice->SetTexture(0, GetTexture(-1));
+				/*** テクスチャの設定 ***/
+				pDevice->SetTexture(0, GetTexture(-1));
 
-			// ポリゴンの描画
-			//pDevice->DrawIndexedPrimitive(D3DPT_TRIANGLEFAN,
-			//	0,
-			//	0,
-			//	INDEXNUM_TOP(pSphere->nXBlock),		// 頂点数
-			//	0,
-			//	pSphere->nXBlock);		// 描画するプリミティブ(三角ポリゴン)の数
+				// ポリゴンの描画
+				//pDevice->DrawIndexedPrimitive(D3DPT_TRIANGLEFAN,
+				//	0,
+				//	0,
+				//	INDEXNUM_TOP(pSphere->nXBlock),		// 頂点数
+				//	0,
+				//	pSphere->nXBlock);		// 描画するプリミティブ(三角ポリゴン)の数
 
-			/*** インデックスを利用したポリゴンの描画 ***/
-			pDevice->DrawIndexedPrimitive(D3DPT_TRIANGLESTRIP,
-				0,
-				0,
-				VERTEX_BUFFER(pSphere->nXBlock, pSphere->nYBlock),		// 頂点数
-				pSphere->nXBlock + 2,
-				DRAWPRIM_NUM(pSphere->nXBlock, pSphere->nYBlock));	// 描画するプリミティブ(三角ポリゴン)の数
+				/*** インデックスを利用したポリゴンの描画 ***/
+				pDevice->DrawIndexedPrimitive(D3DPT_TRIANGLESTRIP,
+					0,
+					0,
+					VERTEX_BUFFER(pSphere->nXBlock, pSphere->nYBlock),		// 頂点数
+					pSphere->nXBlock + 2,
+					DRAWPRIM_NUM(pSphere->nXBlock, pSphere->nYBlock));	// 描画するプリミティブ(三角ポリゴン)の数
 
-			// ポリゴンの描画
-			//pDevice->DrawIndexedPrimitive(D3DPT_TRIANGLEFAN,
-			//	0,
-			//	0,
-			//	INDEXNUM_DOWN(pSphere->nXBlock),		// 頂点数
-			//	(pSphere->nXBlock + 2) + INDEX_BUFFER(((pSphere->nXBlock + 1) * (pSphere->nYBlock + 1)), pSphere->nXBlock, pSphere->nYBlock),
-			//	pSphere->nXBlock);		// 描画するプリミティブ(三角ポリゴン)の数
+				// ポリゴンの描画
+				//pDevice->DrawIndexedPrimitive(D3DPT_TRIANGLEFAN,
+				//	0,
+				//	0,
+				//	INDEXNUM_DOWN(pSphere->nXBlock),		// 頂点数
+				//	(pSphere->nXBlock + 2) + INDEX_BUFFER(((pSphere->nXBlock + 1) * (pSphere->nYBlock + 1)), pSphere->nXBlock, pSphere->nYBlock),
+				//	pSphere->nXBlock);		// 描画するプリミティブ(三角ポリゴン)の数
+			}
 		}
 	}
 }
@@ -514,9 +529,14 @@ bool CollisionSphereToSphere(LPMESHSPHERE pSphere, LPMESHSPHERE pSphereAnother)
 	InitedVec3(posSphereAnother);
 	float fLenght = 0.0f;
 
+	if (pSphere == NULL || pSphereAnother == NULL) return false;
+
 	if (pSphere->pMtxParent != NULL)
 	{
-		D3DXVec3TransformCoord(&posSphere, &pSphere->pos, pSphere->pMtxParent);
+		//D3DXVec3TransformCoord(&posSphere, &pSphere->pos, pSphere->pMtxParent);
+		posSphere.x = pSphere->mtxWorld._41;
+		posSphere.y = pSphere->mtxWorld._42;
+		posSphere.z = pSphere->mtxWorld._43;
 	}
 	else
 	{
@@ -573,6 +593,8 @@ bool CollisionIndexSphere(int nIndexSphere, D3DXVECTOR3 pos, float fRadius)
 //================================================================================================================
 bool CollisionLPSphere(LPMESHSPHERE pSphere, D3DXVECTOR3 pos, float fMag)
 {
+	if (pSphere == NULL) return false;
+
 	if (pSphere->bUse == true)
 	{
 		InitedVec3(length);

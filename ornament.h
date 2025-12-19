@@ -16,13 +16,14 @@
 //**********************************************************************************
 //*** マクロ定義 ***
 //**********************************************************************************
-#define MAX_ORNAMENT			(32)		// 読み込める投擲物の総数
+#define MAX_ORNAMENT			(512)		// 読み込める投擲物の総数
 
 //*************************************************************************************************
 //*** 投擲物情報の定義 ***
 //*************************************************************************************************
 typedef struct
 {
+	int nOrnamentType;		// オーナメントのタイプ
 	int nType;		// オブジェクト番号
 	float fRadius;	// 判定半径
 	float fWeight;	// オーナメントの重さ
@@ -45,11 +46,14 @@ typedef struct
 	int nIdShadow;						// 影の番号
 	int nType;							// オーナメント番号
 	int nIdxCollision;					// 球形当たり判定のインデックス
+	int nIdxBill;						// ビルボードのインデックス
+	int nCounter;						// カウンター
 	bool bDisp;							// 描画するか
 	bool bUse;							// 使用しているかどうか
 	bool bCatched;						// つかまれているか
 	bool bReady;						// つかむことが出来るか
 	bool bCatchedTree;					// 木に当たったか
+	bool bLand;							// 床に落ちたか
 }Ornament, *PORNAMENT;
 
 //**********************************************************************************
@@ -60,7 +64,7 @@ void UninitOrnament(void);
 void UpdateOrnament(void);
 void DrawOrnament(void);
 
-void SettingOrnamentInfo(int nType, float fRadius, float fWeight);
+void SettingOrnamentInfo(int nOrnamentType, int nType, float fRadius, float fWeight);
 int CollisionOrnament(LPMESHSPHERE pCollisionSphere);
 int CollisionOrnament(D3DXVECTOR3 pos);
 void SetParentOrnament(int nIdxOrnament, LPD3DXMATRIX pMtxParent);
@@ -69,4 +73,5 @@ void ShotOrnament(int nIdxOrnament, D3DXVECTOR3 vec, float fSpeed);
 PORNAMENT GetOrnament(int nIdxOrnament);
 void SetOrnament(D3DXVECTOR3 pos, D3DXVECTOR3 rot, int nType, float fSpd, float fRadius);
 void CollisionTree(LPMESHSPHERE pCollisionSphere, LPD3DXMATRIX pMtxXmasTree, D3DXVECTOR3 posTree);
+void SetOrnamentRand(int nNumOrnament);
 #endif

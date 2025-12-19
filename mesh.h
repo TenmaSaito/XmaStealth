@@ -14,6 +14,7 @@
 #include "meshCylinder.h"
 #include "meshDome.h"
 #include "meshSphere.h"
+#include "meshRing.h"
 
 //**********************************************************************************
 //*** É}ÉNÉçíËã` ***

@@ -10,8 +10,7 @@
 //**********************************************************************************
 //*** インクルードファイル ***
 //**********************************************************************************
-#include "main.h"
-#include "input.h"
+#include "game.h"
 
 //**********************************************************************************
 //*** マクロ定義 ***
@@ -24,4 +23,7 @@ void InitBillBoard(void);
 void UninitBillBoard(void);
 void UpdateBillBoard(void);
 void DrawBillBoard(void);
+
+int SetBillBoard(D3DXVECTOR3 pos, float fWidth, float fHeight, int nIdxTexture);
+void KillBillboard(int nIdxBill);
 #endif

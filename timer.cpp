@@ -7,6 +7,7 @@
 #include "game.h"
 #include "timer.h"
 #include "sound.h"
+#include <assert.h>
 
 //*************************************************************************************************
 //*** マクロ定義 ***
@@ -54,7 +55,7 @@ void InitTimer(void)
 	g_nAlphaTimer = 1;
 
 	// 頂点バッファの生成
-	pDevice->CreateVertexBuffer(sizeof(VERTEX_2D) * 4 * NUM_PLACE,			// NUM_PLACE分の頂点を作成
+	pDevice->CreateVertexBuffer(sizeof(VERTEX_2D) * (4 * NUM_PLACE),			// NUM_PLACE分の頂点を作成
 		D3DUSAGE_WRITEONLY,
 		FVF_VERTEX_2D,
 		D3DPOOL_MANAGED,
@@ -161,6 +162,7 @@ void UpdateTimer(void)
 void DrawTimer(void)
 {
 	LPDIRECT3DDEVICE9 pDevice;			// デバイスのポインタ
+	HRESULT hr;
 	int nCntTimer;
 
 	// デバイスの取得
@@ -178,9 +180,9 @@ void DrawTimer(void)
 	for (nCntTimer = 0; nCntTimer < NUM_PLACE; nCntTimer++)
 	{
 		// ポリゴンの描画
-		pDevice->DrawPrimitive(D3DPT_TRIANGLESTRIP,		// プリミティブの種類
-			4 * nCntTimer,								// 描画する最初の頂点インデックス
-			2);											// 描画するプリミティブの数
+		hr = pDevice->DrawPrimitive(D3DPT_TRIANGLESTRIP,	// プリミティブの種類
+			4 * nCntTimer,									// 描画する最初の頂点インデックス
+			2);												// 描画するプリミティブの数
 	}
 }
 

@@ -175,7 +175,7 @@ void DrawLine(void)
 					1);											// 描画するプリミティブの数
 			}
 
-			g_aLine[nCntLine].bUse = false;
+			//g_aLine[nCntLine].bUse = false;
 		}
 	}
 

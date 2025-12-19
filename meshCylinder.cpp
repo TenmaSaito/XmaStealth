@@ -212,23 +212,7 @@ int SetMeshCylinder(D3DXVECTOR3 pos, D3DXVECTOR3 rot, float fHeight, float fRadi
 					{
 						float fAngle = 0.0f;
 
-						switch (type)
-						{
-						case CULLINGTYPE_FRONT:
-
-							fAngle = (D3DX_2PI / (float)pCylinder->nXBlock) * nCntX;
-
-							break;
-
-						case CULLINGTYPE_BACK:
-
-							fAngle = (-D3DX_2PI / (float)pCylinder->nXBlock) * nCntX;
-
-							break;
-
-						default:
-							break;
-						}
+						fAngle = (D3DX_2PI / (float)pCylinder->nXBlock) * nCntX;
 
 						D3DXVECTOR3 nor = {};
 						D3DXVECTOR3 pos = {};

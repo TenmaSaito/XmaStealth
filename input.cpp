@@ -592,6 +592,63 @@ bool GetJoyThumbRYState(void)
 //================================================================================================================
 // ジョイパッドのスティックの値
 //================================================================================================================
+bool GetJoyThumbValue(int* pValueH, int* pValueV, int nThumb)
+{
+	if ((pValueH))
+	{
+		if (nThumb == JOYTHUMB_LEFT)
+		{
+			*pValueH = g_joykeyState.Gamepad.sThumbLX;
+		}
+		else if(nThumb == JOYTHUMB_RIGHT)
+		{
+			*pValueH = g_joykeyState.Gamepad.sThumbRX;
+		}
+	}
+
+	if ((pValueV))
+	{
+		if (nThumb == JOYTHUMB_LEFT)
+		{
+			*pValueV = g_joykeyState.Gamepad.sThumbLY;
+		}
+		else if (nThumb == JOYTHUMB_RIGHT)
+		{
+			*pValueV = g_joykeyState.Gamepad.sThumbRY;
+		}
+	}
+
+	if (nThumb == JOYTHUMB_LEFT)
+	{
+		if (g_joykeyState.Gamepad.sThumbLX <= -500 || g_joykeyState.Gamepad.sThumbLX >= 500
+			|| g_joykeyState.Gamepad.sThumbLY <= -500 || g_joykeyState.Gamepad.sThumbLY >= 500)
+		{
+			return true;
+		}
+		else
+		{
+			return false;
+		}
+	}
+	else if (nThumb == JOYTHUMB_RIGHT)
+	{
+		if (g_joykeyState.Gamepad.sThumbRX <= -500 || g_joykeyState.Gamepad.sThumbRX >= 500
+			|| g_joykeyState.Gamepad.sThumbRY <= -500 || g_joykeyState.Gamepad.sThumbRY >= 500)
+		{
+			return true;
+		}
+		else
+		{
+			return false;
+		}
+	}
+
+	return false;
+}
+
+//================================================================================================================
+// ジョイパッドのスティックの値
+//================================================================================================================
 float GetJoyThumbPow(int nThumb)
 {
 	switch (nThumb)
@@ -1013,11 +1070,11 @@ float GetJoyThumbAngle(int nThumb)
 
 	if (nThumb == JOYTHUMB_LEFT)
 	{
-		fAngle = atan2f(g_joykeyState.Gamepad.sThumbLX, g_joykeyState.Gamepad.sThumbLY);
+		fAngle = atan2f((float)g_joykeyState.Gamepad.sThumbLX, (float)g_joykeyState.Gamepad.sThumbLY);
 	}
 	else if(nThumb == JOYTHUMB_RIGHT)
 	{
-		fAngle = atan2f(g_joykeyState.Gamepad.sThumbRX, g_joykeyState.Gamepad.sThumbRY);
+		fAngle = atan2f((float)g_joykeyState.Gamepad.sThumbRX, (float)g_joykeyState.Gamepad.sThumbRY);
 	}
 	else
 	{
@@ -1057,11 +1114,11 @@ bool GetJoyTrigger(int nTrigger)
 //================================================================================================================
 // バイブレーションの設定
 //================================================================================================================
-int SetVibration(float power, int nTime)
+int SetVibration(int nLPower, int nRPower, int nTime)
 {
 	g_nCounterVibretion = nTime;
-	g_joyVibration.wLeftMotorSpeed = power;
-	g_joyVibration.wLeftMotorSpeed = power;
+	g_joyVibration.wLeftMotorSpeed = nLPower;
+	g_joyVibration.wLeftMotorSpeed = nRPower;
 
 	XInputSetState(0, &g_joyVibration);
 

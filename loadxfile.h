@@ -19,6 +19,7 @@
 //**********************************************************************************
 //*** プロトタイプ宣言 ***
 //**********************************************************************************
+HRESULT InitData(_In_ const char* pScriptFileName, MODE modeSet);
 HRESULT InitScript(_In_ const char *pScriptFileName);
 HRESULT LoadMotion(_In_ const char *pMotionFileName);
 void UninitScript(void);

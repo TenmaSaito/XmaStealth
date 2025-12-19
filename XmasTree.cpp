@@ -73,6 +73,25 @@ void UpdateXmasTree(void)
 		pXmas->rot.z += (pXmas->rotDest.z - pXmas->rot.z) * 0.0045f;
 
 		pXmas->rot = RepairedRot(pXmas->rot);
+		if (pXmas->rotDest.x <= -D3DX_HALFPI)
+		{
+			pXmas->rotDest.x = -D3DX_HALFPI;
+
+		}
+		else if (pXmas->rotDest.x >= D3DX_HALFPI)
+		{
+			pXmas->rotDest.x = D3DX_HALFPI;
+		}
+
+		if (pXmas->rotDest.z <= -D3DX_HALFPI)
+		{
+			pXmas->rotDest.z = -D3DX_HALFPI;
+
+		}
+		else if (pXmas->rotDest.z >= D3DX_HALFPI)
+		{
+			pXmas->rotDest.z = D3DX_HALFPI;
+		}
 
 		PrintDebugProc("countOnrament %d\n", pXmas->nCntXmasTrees);
 
@@ -81,7 +100,7 @@ void UpdateXmasTree(void)
 		head = D3DXVECTOR3(0.0f, pXmas->fHead, 0.0f);
 		D3DXVec3TransformCoord(&headOut, &head, &pXmas->mtxWorld);
 
-		if (headOut.y <= 0.0f)
+		if (headOut.y <= 10.0f && GetMode() == MODE_GAME)
 		{
 			SetGameState(GAMESTATE_BADEND, 120);
 		}
@@ -219,7 +238,7 @@ void SetXmasTree(D3DXVECTOR3 pos, D3DXVECTOR3 rot, int nType)
 
 		while (fPosY >= posBottom.y)
 		{
-			float fRadius = (pXmas->fRadius * ((pObj->mtxMax.y - fPosY) / fHeight)) * 1.0f;
+			float fRadius = (pXmas->fRadius * ((pObj->mtxMax.y - fPosY) / fHeight)) * 1.05f;
 
 			pXmas->aIdxCollision[g_nCntCol] = SetParentSphere(VEC_Y(fPosY),
 				VECNULL,
@@ -238,14 +257,14 @@ void SetXmasTree(D3DXVECTOR3 pos, D3DXVECTOR3 rot, int nType)
 }
 
 //================================================================================================================
-// --- 敵の設置 ---
+// --- オーナメントの設置 ---
 //================================================================================================================
 void PutOrnament(float fAngle, float fWeight)
 {
 	PXMASTREE pXmas = &g_xmasTree;
 
-	pXmas->rotDest.x += cosf(fAngle) * (fWeight * 0.001f);
-	pXmas->rotDest.z -= sinf(fAngle) * (fWeight * 0.001f);
+	pXmas->rotDest.x += cosf(fAngle) * (fWeight * 0.01f);
+	pXmas->rotDest.z -= sinf(fAngle) * (fWeight * 0.01f);
 
 	pXmas->rotDest =  RepairedRot(pXmas->rotDest);
 

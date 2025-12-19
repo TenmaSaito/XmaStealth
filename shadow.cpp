@@ -19,7 +19,7 @@
 #define SHADOW_SPD			(2.0f)		// ポリゴンの移動スピード
 #define SHADOW_ROTSPD		(0.1f)		// ポリゴンの回転スピード
 #define SHADOW_WDSPD		(0.1f)		// ポリゴンの拡縮スピード
-#define MAX_SHADOW			(128)		// 影の最大数
+#define MAX_SHADOW			(300)		// 影の最大数
 
 //*************************************************************************************************
 //*** 影の構造体定義 ***
@@ -154,7 +154,7 @@ void DrawShadow(void)
 	D3DXMATRIX mtxRot, mtxTrans;		// 計算用マトリックス
 
 	/*** Zテストを無効にする ***/
-	pDevice->SetRenderState(D3DRS_ZFUNC, D3DCMP_ALWAYS);
+	pDevice->SetRenderState(D3DRS_ZFUNC, D3DCMP_LESS);
 	pDevice->SetRenderState(D3DRS_ZWRITEENABLE, FALSE);
 
 	/*** アルファブレンディングを減算合成に設定！ ***/
@@ -162,7 +162,7 @@ void DrawShadow(void)
 	pDevice->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_SRCALPHA);
 	pDevice->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_ONE);
 
-	for (int nCntShadow = 0; nCntShadow < sizeof g_aShadow / sizeof(Shadow); nCntShadow++)
+	for (int nCntShadow = 0; nCntShadow < MAX_SHADOW; nCntShadow++)
 	{
 		if (g_aShadow[nCntShadow].bUse)
 		{
@@ -222,7 +222,7 @@ int SetShadow(float fWidth, float fDepth)
 	int nErrorShadow = -1;
 	VERTEX_3D* pVtx;					// 頂点情報へのポインタ
 
-	for (int nCntShadow = 0; nCntShadow < sizeof g_aShadow / sizeof(Shadow); nCntShadow++)
+	for (int nCntShadow = 0; nCntShadow < MAX_SHADOW; nCntShadow++)
 	{
 		if (g_aShadow[nCntShadow].bUse != true)
 		{
@@ -375,8 +375,8 @@ float AddShadowSize(int nIdShadow, SHADOW_SIZE type, float fValue)
 	{
 		return fSize;
 	}
-
-	if (CheckIndex(SHADOW_SIZE_MAX, type))
+	
+	if (FAILED(CheckIndex(SHADOW_SIZE_MAX, type)))
 	{
 		return fSize;
 	}
@@ -402,4 +402,33 @@ float AddShadowSize(int nIdShadow, SHADOW_SIZE type, float fValue)
 	}
 
 	return fSize;
+}
+
+//================================================================================================================
+// --- 影の描画変更処理 ---
+//================================================================================================================
+void InvisibleShadow(int nIdxShadow, float fAlpha)
+{
+	VERTEX_3D* pVtx;					// 頂点情報へのポインタ
+
+	if (nIdxShadow == -1)
+	{
+		return;
+	}
+
+	g_aShadow[nIdxShadow].col.a = fAlpha;
+
+	/*** 頂点バッファの設定 ***/
+	g_pVtxBuffShadow->Lock(0, 0, (void**)&pVtx, 0);
+
+	pVtx += 4 * nIdxShadow;
+
+	/*** 頂点カラー設定 ***/
+	pVtx[0].col = g_aShadow[nIdxShadow].col;
+	pVtx[1].col = g_aShadow[nIdxShadow].col;
+	pVtx[2].col = g_aShadow[nIdxShadow].col;
+	pVtx[3].col = g_aShadow[nIdxShadow].col;
+
+	/*** 頂点バッファの設定を終了***/
+	g_pVtxBuffShadow->Unlock();
 }

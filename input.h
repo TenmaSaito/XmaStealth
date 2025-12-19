@@ -133,10 +133,11 @@ bool GetJoyThumbWatch(void);
 
 float GetJoyThumbPow(int nThumb);
 float GetJoyThumbAngle(int nThumb);
+bool GetJoyThumbValue(int* pValueH, int* pValueV, int nThumb);
 
 bool GetJoyTrigger(int nTrigger);
 
-int SetVibration(float power, int nTime = INT_INFINITY);
+int SetVibration(int nLPower, int nRPower, int nTime = INT_INFINITY);
 int GetVibration(void);
 
 //***************************************************

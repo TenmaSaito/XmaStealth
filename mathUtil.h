@@ -24,10 +24,10 @@
 #define VEC_X(x)				D3DXVECTOR3(x, 0.0f, 0.0f)		// Xのみ変更
 #define VEC_Y(y)				D3DXVECTOR3(0.0f, y, 0.0f)		// Yのみ変更
 #define VEC_Z(z)				D3DXVECTOR3(0.0f, 0.0f, z)		// Zのみ変更
-#define Vec3(name)				D3DXVECTOR3	name;				// Vector3省略版
-#define InitedVec3(name)		D3DXVECTOR3 name = {};			// 初期化済みVector3
-#define OptVec3(name, x, y, z)	D3DXVECTOR3 name = D3DXVECTOR3(x, y, z);	// 初期化混合変数宣言
-#define RepaidRot(x, y, z)		RepairedRot(D3DXVECTOR3(x, y, z));	// 修正済み角度
+#define Vec3(name)				D3DXVECTOR3	name				// Vector3省略版
+#define InitedVec3(name)		D3DXVECTOR3 name = {}			// 初期化済みVector3
+#define OptVec3(name, x, y, z)	D3DXVECTOR3 name = D3DXVECTOR3(x, y, z)	// 初期化混合変数宣言
+#define InitRot(x, y, z)		RepairedRot(D3DXVECTOR3(x, y, z))	// 修正済み角度
 
 //**********************************************************************************
 //*** カリングタイプ ***
@@ -85,6 +85,7 @@ float RepairRot(float fRot);
 void RepairRot(float *pOut, const float *fAngle);
 void RepairRot(D3DXVECTOR3 *pOut, const D3DXVECTOR3 *pIn);
 float InverseRot(float fRot);
+D3DXVECTOR3 InverseRot(D3DXVECTOR3 fRot);
 D3DXVECTOR3 RepairedRot(const D3DXVECTOR3 pIn);
 D3DXVECTOR3 GetPosBetweenPos(D3DXVECTOR3 pos1, D3DXVECTOR3 pos2);
 D3DXCOLOR GetRandomColor(bool bUseAlphaRand);

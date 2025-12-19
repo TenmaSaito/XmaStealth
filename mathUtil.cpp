@@ -218,7 +218,7 @@ void RepairRot(D3DXVECTOR3* pOut, const D3DXVECTOR3* pIn)
 }
 
 //==================================================================
-// --- äpìxÇèCê≥Ç∑ÇÈèàóù ---
+// --- äpìxÇîΩì]Ç∑ÇÈèàóù ---
 //==================================================================
 float InverseRot(float fRot)
 {
@@ -235,6 +235,11 @@ float InverseRot(float fRot)
 	}
 
 	return fRotInverse;
+}
+
+D3DXVECTOR3 InverseRot(D3DXVECTOR3 fRot)
+{
+	return VECNULL;
 }
 
 //==================================================================
@@ -1007,6 +1012,7 @@ char *UniteChar(char* pOut, const char* fmt, ...)
 //==================================================================
 void GenerateMessageBox(_In_ UINT nType, _In_ const char* pCaption, _In_ const char* fmt, ...)
 {
+#ifdef _DEBUG
 	HWND hWnd = GetHandleWindow();
 	if (hWnd == NULL)
 	{
@@ -1199,6 +1205,7 @@ void GenerateMessageBox(_In_ UINT nType, _In_ const char* pCaption, _In_ const c
 	strcat(&aStrOut[0], aStrEnd);
 
 	MessageBox(hWnd, &aStrOut[0], pCaption, nType);
+#endif
 }
 
 //==================================================================

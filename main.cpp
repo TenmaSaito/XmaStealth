@@ -22,7 +22,9 @@
 #include "gameover.h"
 #include "ranking.h"
 #include "xmodel.h"
+#include "tutorial.h"
 #include <crtdbg.h>
+#include <assert.h>
 
 //**********************************************************************************
 //*** マクロ定義 ***
@@ -53,6 +55,7 @@ LPDIRECT3D9				g_pD3D = NULL;					// Direct3Dオブジェクトへのポインタ
 LPDIRECT3DDEVICE9		g_pD3DDevice = NULL;			// Direct3Dデバイスへのポインタ
 MODE g_mode = MODE_TITLE;								// 現在の画面
 MODE g_modeExac = MODE_TITLE;							// ひとつ前の過去の画面
+MODE g_modeInit = MODE_TITLE;							// init中の画面
 HWND g_hWnd = NULL;										// 獲得したウィンドウハンドル
 int g_nCountFPS = 0;									// FPSカウンタ
 bool g_isFullscreen = false;							// フルスクリーンの使用状況
@@ -351,8 +354,6 @@ HRESULT Init(HINSTANCE hInstance, HWND hWnd, BOOL bWindow)
 		return E_FAIL;
 	}
 
-	InitCamera();
-
 	InitDebugProc();
 
 #ifdef MODE_ON
@@ -363,7 +364,7 @@ HRESULT Init(HINSTANCE hInstance, HWND hWnd, BOOL bWindow)
 	SetMode(g_mode);
 
 	/*** タイトルBGMをフェードイン ***/
-	FadeSound(SOUND_LABEL_BGM_TITLE);
+	//FadeSound(SOUND_LABEL_BGM_TITLE);
 
 #endif // MODE_ON
 
@@ -391,7 +392,12 @@ void Uninit(void)
 	// ゲームオーバー画面の終了処理
 	UninitGameOver();
 
-	// UninitXmodel();
+	// チュートリアル終了処理
+	UninitTutorial();
+
+	UninitScript();
+
+	UninitObject();
 
 	// フェードの終了処理
 	UninitFade();
@@ -447,8 +453,6 @@ void Update(void)
 	// マウスの更新処理
 	UpdateMouse();
 
-	UpdateCamera();
-
 	UpdateDebugProc();
 
 #ifdef MODE_ON
@@ -488,6 +492,11 @@ void Update(void)
 			UpdateTitle();
 			break;
 
+			// チュートリアル画面
+		case MODE_TUTORIAL:
+			UpdateTutorial();
+			break;
+
 		// ゲーム画面
 		case MODE_GAME:
 			UpdateGame();
@@ -523,6 +532,8 @@ void Update(void)
 //================================================================================================================
 void Draw(void)
 {
+	HRESULT hr;
+
 	// 画面クリア(バックバッファとZバッファのクリア)
 	g_pD3DDevice->Clear(0, NULL,
 		(D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER),
@@ -538,6 +549,11 @@ void Draw(void)
 			// タイトル画面
 		case MODE_TITLE:
 			DrawTitle();
+			break;
+
+			// チュートリアル画面
+		case MODE_TUTORIAL:
+			DrawTutorial();
 			break;
 
 			// ゲーム画面
@@ -573,7 +589,30 @@ void Draw(void)
 	}
 
 	// バックバッファとフロントバッファの入れ替え
-   	g_pD3DDevice->Present(NULL, NULL, NULL, NULL);
+   	hr = g_pD3DDevice->Present(NULL, NULL, NULL, NULL);
+#ifdef _DEBUG
+	if (FAILED(hr))
+	{
+		LPVOID* errorString;
+
+		FormatMessage(
+			FORMAT_MESSAGE_ALLOCATE_BUFFER					// テキストのメモリ割り当てを要求する
+			| FORMAT_MESSAGE_FROM_SYSTEM					// エラーメッセージはWindowsが用意しているものを使用
+			| FORMAT_MESSAGE_IGNORE_INSERTS,				// 次の引数を無視してエラーコードに対するエラーメッセージを作成する
+			NULL, 
+			hr,
+			MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),		// 言語を指定
+			(LPTSTR)&errorString,							// メッセージテキストが保存されるバッファへのポインタ
+			0,
+			NULL);
+
+		GenerateMessageBox(MB_ICONERROR,
+			"error",
+			(LPCTSTR)errorString);
+
+		LocalFree(errorString);
+	}
+#endif
 }
 
 //================================================================================================================
@@ -590,12 +629,19 @@ LPDIRECT3DDEVICE9 GetDevice(void)
 //================================================================================================================
 void SetMode(MODE mode)
 {
+	g_modeInit = mode;
+
 	// 現在の画面(モード)の終了
 	switch (g_mode)
 	{
 	// タイトル画面
 	case MODE_TITLE:
 		UninitTitle();
+		break;
+
+		// チュートリアル画面
+	case MODE_TUTORIAL:
+		UninitTutorial();
 		break;
 
 	// ゲーム画面
@@ -628,6 +674,11 @@ void SetMode(MODE mode)
 	// タイトル画面
 	case MODE_TITLE:
 		InitTitle();
+		break;
+
+		// チュートリアル画面
+	case MODE_TUTORIAL:
+		InitTutorial();
 		break;
 
 	// ゲーム画面
@@ -674,6 +725,15 @@ MODE GetModeExac(void)
 {
 	return g_modeExac;
 }
+
+//================================================================================================================
+// --- Init後のモードを取得 ---
+//================================================================================================================
+MODE GetModeNext(void)
+{
+	return g_modeInit;
+}
+
 #endif
 
 //================================================================================================================
