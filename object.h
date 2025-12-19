@@ -15,7 +15,7 @@
 //**********************************************************************************
 //*** マクロ定義 ***
 //**********************************************************************************
-#define MAX_OBJECT			(1024)			// 読み込めるオブジェクト数
+#define MAX_OBJECT			(512)			// 読み込めるオブジェクト数
 #define MAX_OBJTEXTURE		(14)			// 読み込むテクスチャの最大数
 #define MAX_MOTION			(10)			// モーションの最大数
 #define MAX_KEY_INFO		(30)			// キー情報の最大数
@@ -128,7 +128,6 @@ typedef struct
 	float fHeight;						// モデルの高さ
 	float fDepth;						// モデルの奥行
 	int nType;							// 設置するモデルの種類
-	char aCode[MAX_PATH];				// 判別用特殊文字列
 	bool bUse;							// 使われているか
 	COLLISIONTYPE collisionType;		// 当たり判定の種類(0 : NULL, 1 : 矩形, 2 : 外積, 3 : 球形)
 }Object, *LPOBJECT;

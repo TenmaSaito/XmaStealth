@@ -69,8 +69,8 @@ void InitMeshRing(void)
 
 	for (int nCntRelease = 0; nCntRelease < MAX_MESH; nCntRelease++, pRing++)
 	{
-		pRing->pos = {};
-		pRing->rot = {};
+		pRing->pos = VECNULL;
+		pRing->rot = VECNULL;
 		pRing->fRadiusInner = 0.0f;
 		pRing->fRadiusOuter = 0.0f;
 		pRing->fSpdInner = 0.0f;
@@ -89,15 +89,15 @@ void InitMeshRing(void)
 			&pRing->pVtxBuff,
 			NULL);
 
-		/*** 頂点バッファの設定 ***/
-		pRing->pVtxBuff->Lock(0, 0, (void**)&pVtx, 0);
-
 		if (SUCCEEDED(hr))
 		{
+			/*** 頂点バッファの設定 ***/
+			pRing->pVtxBuff->Lock(0, 0, (void**)&pVtx, 0);
+
 			for (int nCntHeight = 0; nCntHeight < 2; nCntHeight++)
 			{
 				/*** 頂点座標の設定の設定 + テクスチャ座標の設定 ***/
-				for (int nCntX = 0; nCntX < (16 + 1); nCntX++)
+				for (int nCntX = 0; nCntX < 17; nCntX++)
 				{
 					float fAngle = 0.0f;
 
@@ -106,7 +106,6 @@ void InitMeshRing(void)
 					D3DXVECTOR3 nor = {};
 					D3DXVECTOR3 pos = {};
 					D3DXVECTOR2 tex = {};
-					int nCn = nCntX + (nCntHeight * (16 + 1));
 
 					float fRadius;
 					if (nCntHeight == 0)
@@ -122,9 +121,9 @@ void InitMeshRing(void)
 					pos.y = 0.0f;
 					pos.z = cosf(fAngle) * (fRadius * 0.5f);
 
-					pVtx[nCn].pos = pos;
+					pVtx->pos = pos;
 
-					pVtx[nCn].col = D3DXCOLOR_NULL;
+					pVtx->col = D3DXCOLOR_NULL;
 
 					nor.x = pos.x - pRing->pos.x;
 					nor.y = 0.0f;
@@ -132,16 +131,18 @@ void InitMeshRing(void)
 
 					D3DXVec3Normalize(&nor, &nor);
 
-					pVtx[nCn].nor = nor;
+					pVtx->nor = nor;
 
-					pVtx[nCn].tex.x = (1.0f / (float)16) * nCntX;
-					pVtx[nCn].tex.y = (1.0f * (float)nCntHeight);
+					pVtx->tex.x = (1.0f / (float)16) * nCntX;
+					pVtx->tex.y = (1.0f * (float)nCntHeight);
+
+					pVtx++;
 				}
 			}
-		}
 
-		/*** 頂点バッファの設定を終了 ***/
-		pRing->pVtxBuff->Unlock();
+			/*** 頂点バッファの設定を終了 ***/
+			pRing->pVtxBuff->Unlock();
+		}
 
 		/*** インデックスバッファの生成 ***/
 		hr = pDevice->CreateIndexBuffer(sizeof(WORD) * INDEX_BUFFER(VTXMESH(16, 1), 16, 1),		// sizeof(WORD) * 必要なインデックス数
@@ -350,14 +351,15 @@ void DrawMeshRing(void)
 void SetMeshRing(D3DXVECTOR3 pos, D3DXVECTOR3 rot, float fRadiusInner, float fRadiusOuter, int nIdxTexture, float fSpdInner, float fSpdOuter, int nLife)
 {
 	VERTEX_3D* pVtx;					// 頂点情報へのポインタ
-	WORD* pIdx;							// インデックス情報へのポインタ
 	HRESULT hr;
 	LPMESHRING pRing = &g_aRing[0];
 
 	for (int nCntRing = 0; nCntRing < MAX_MESH; nCntRing++, pRing++)
 	{
+		// 使われていなければ
 		if (pRing->bUse == false)
 		{
+			// 情報を設定
 			pRing->pos = pos;
 			pRing->rot = rot;
 			pRing->fRadiusInner = fRadiusInner;
@@ -376,7 +378,7 @@ void SetMeshRing(D3DXVECTOR3 pos, D3DXVECTOR3 rot, float fRadiusInner, float fRa
 			for (int nCntHeight = 0; nCntHeight < 2; nCntHeight++)
 			{
 				/*** 頂点座標の設定の設定 + テクスチャ座標の設定 ***/
-				for (int nCntX = 0; nCntX < (16 + 1); nCntX++)
+				for (int nCntX = 0; nCntX < 17; nCntX++)
 				{
 					float fAngle = 0.0f;
 

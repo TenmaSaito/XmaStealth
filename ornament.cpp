@@ -45,26 +45,9 @@ void InitOrnament(void)
 	/*** 各変数の初期化 ***/
 	for (int nCntOrnament = 0; nCntOrnament < MAX_ORNAMENT; nCntOrnament++)
 	{
-		g_aOrnament[nCntOrnament].pos = D3DXVECTOR3_NULL;
-		g_aOrnament[nCntOrnament].posOld = D3DXVECTOR3_NULL;
-		g_aOrnament[nCntOrnament].pos.y = 15.0f;
-		g_aOrnament[nCntOrnament].move = D3DXVECTOR3_NULL;
-		g_aOrnament[nCntOrnament].rot = D3DXVECTOR3_NULL;
-		g_aOrnament[nCntOrnament].pMtxParent = NULL;
-		g_aOrnament[nCntOrnament].nIdShadow = -1;
-		g_aOrnament[nCntOrnament].nType = 0;
-		g_aOrnament[nCntOrnament].nCounter = 0;
-		g_aOrnament[nCntOrnament].bDisp = false;
-		g_aOrnament[nCntOrnament].bUse = false;
-		g_aOrnament[nCntOrnament].bCatched = false;
-		g_aOrnament[nCntOrnament].bReady = true;
-		g_aOrnament[nCntOrnament].bLand = false;
-		g_aOrnamentInfo[nCntOrnament].nType = -1;
-		g_aOrnamentInfo[nCntOrnament].nOrnamentType = -1;
-		g_aOrnamentInfo[nCntOrnament].bUse = false;
-		g_aOrnamentInfo[nCntOrnament].bSafe = false;
-		g_aOrnamentInfo[nCntOrnament].fRadius = 0.0f;
-		g_aOrnamentInfo[nCntOrnament].fWeight = 0.0f;
+		ZeroMemory(&g_aOrnament[nCntOrnament], sizeof(Ornament));
+
+		ZeroMemory(&g_aOrnamentInfo[nCntOrnament], sizeof(ORNAMENT_INFO));
 	}
 
 	g_nCounterOrnament = 0;
@@ -85,6 +68,7 @@ void UninitOrnament(void)
 void UpdateOrnament(void)
 {
 	PORNAMENT pOrnament = &g_aOrnament[0];
+	MODE mode = GetMode();
 	int nCounterPutted = 0;			// 木に付けられたオーナメント数
 
 	for (int nCntOrnament = 0; nCntOrnament < MAX_ORNAMENT; nCntOrnament++, pOrnament++)
@@ -146,7 +130,7 @@ void UpdateOrnament(void)
 
 				if (pOrnament->bLand == true)
 				{
-					if (pOrnament->nIdxBill == -1)
+					if (pOrnament->nIdxBill == -1 && mode == MODE_TUTORIAL)
 					{
 						Vec3(posBill = pos);
 						posBill.y += 50.0f;
@@ -185,14 +169,14 @@ void UpdateOrnament(void)
 					}
 				}
 			}
-			//else
-			//{
-			//	Vec3(posShadow);
-			//	PrintDebugProc("%~3f\n", pOrnament->pos.x, pOrnament->pos.y, pOrnament->pos.z);
-			//	//D3DXVec3TransformCoord(&posShadow, &pOrnament->pos, &pOrnament->mtxWorld);
+			else
+			{
+				Vec3(posShadow);
+				PrintDebugProc("%~3f\n", pOrnament->pos.x, pOrnament->pos.y, pOrnament->pos.z);
+				//D3DXVec3TransformCoord(&posShadow, &pOrnament->pos, &pOrnament->mtxWorld);
 
-			//	InvisibleShadow(pOrnament->nIdShadow, 0.0f);
-			//}
+				InvisibleShadow(pOrnament->nIdShadow, 0.0f);
+			}
 
 			if (pOrnament->bCatchedTree == true)
 			{
@@ -293,31 +277,36 @@ void SettingOrnamentInfo(int nOrnamentType, int nType, float fRadius, float fWei
 
 	for (int nCntInfo = 0; nCntInfo < MAX_ORNAMENT; nCntInfo++, pInfo++)
 	{
+		// オーナメント情報構造体が使われていなければ
 		if (pInfo->bUse == false)
 		{
+			// 設定するモデル番号のモデルが取り扱っていい物かを確認する
 			if (GetObjectInfo(nType) != NULL)
-			{
+			{ // アドレスが帰ってきた(扱っても安全なモデル情報)なら
+				// 投擲物のタイプを確認
 				if (nOrnamentType < 0 || nOrnamentType >= 3)
 				{
+					// 上限以上もしくは下限未満なら0に強制
 					pInfo->nOrnamentType = 0;
 				}
 				else
 				{
+					// そうでなければ、引数の値で登録
 					pInfo->nOrnamentType = nOrnamentType;
 				}
 				
-				pInfo->nType = nType;
-				pInfo->fRadius = fRadius;
-				pInfo->fWeight = fWeight;
-				pInfo->bSafe = true;
+				pInfo->nType = nType;		// オーナメント情報にモデル情報のインデックスを登録
+				pInfo->fRadius = fRadius;	// オーナメントの半径を登録 
+				pInfo->fWeight = fWeight;	// オーナメントの重量を登録
+				pInfo->bSafe = true;		// 取り扱ってもいい情報として設定
 			}
 			else
-			{
-				pInfo->bSafe = false;
+			{ // NULL値が返ってきた(何かしらの理由で使用できないモデル情報)なら
+				pInfo->bSafe = false;		// 取り扱ってはいけない情報として登録
 			}
 
-			pInfo->bUse = true;
-			g_nCounterOrnamentInfo++;
+			pInfo->bUse = true;				// 安全性にかかわらず、情報格納済みに設定
+			g_nCounterOrnamentInfo++;		// 登録した情報数を増加
 
 			break;
 		}
@@ -333,37 +322,45 @@ void SetOrnament(D3DXVECTOR3 pos, D3DXVECTOR3 rot, int nType, float fSpd, float 
 	LPOBJECTINFO pObj = GetObjectInfo(g_aOrnamentInfo[nType].nType);
 	PORNAMENT pOrnament = &g_aOrnament[0];
 
+	// 指定されたインデックスのオブジェクトの情報が安全でなければ
 	if (pObj == NULL)
-	{
+	{ // 終了
 		return;
 	}
 
-	/*** Xファイルの読み込み ***/
+	/*** 空き検索 ***/
 	for (int nCntOrnament = 0; nCntOrnament < MAX_ORNAMENT; nCntOrnament++, pOrnament++)
 	{
+		// 使われていなければ
 		if (pOrnament->bUse != true)
 		{
 			/*** 影の生成 ***/
 			pOrnament->nIdShadow = SetShadow((pObj->mtxMax.x - pObj->mtxMin.x), (pObj->mtxMax.z - pObj->mtxMin.z));
 
-			/*** 敵の情報の適用 ***/
+			/*** オーナメントの情報の適用 ***/
 			pOrnament->pos = pos;
 			pOrnament->rot = rot;
 			pOrnament->fSpd = fSpd;
 			pOrnament->nType = nType;
 			pOrnament->pMtxParent = NULL;
 			pOrnament->bDisp = true;
-			pOrnament->bUse = true;
-			pOrnament->bCatched = false;
-			pOrnament->bCatchedTree = false;
-			pOrnament->bReady = true;
+			pOrnament->bUse = true;				// 使用状態に設定
+			pOrnament->bCatched = false;		// キャッチされていない状態に設定
+			pOrnament->bCatchedTree = false;	// 木についていない状態に設定
+			pOrnament->bReady = true;			// つかめる状態に設定
 
 			// 当たり判定生成
 			pOrnament->nIdxCollision = SetParentSphere(VECNULL, VECNULL, D3DXCOLOR(1.0f, 0.0f, 0.0f, 0.3f), 12, 12, g_aOrnamentInfo[nType].fRadius, false, &pOrnament->mtxWorld);
-			D3DXVECTOR3 pos = pOrnament->pos;
-			pos.y += 50.0f;
-			pOrnament->nIdxBill = SetBillBoard(pos, 15.0f, 40.0f, 3);
-			g_nCounterOrnament++;
+			D3DXVECTOR3 pos = pOrnament->pos;	// 位置を取得
+			pos.y += 50.0f;						// Y座標を少し上に挙げる
+
+			if (GetMode() == MODE_TUTORIAL)
+			{ // チュートリアルなら
+				pOrnament->nIdxBill = SetBillBoard(pos, 15.0f, 40.0f, 3);	// ビルボードを設置
+			}
+
+			g_nCounterOrnament++;				// 配置数を増加
+
 			break;
 		}
 	}
@@ -399,15 +396,18 @@ int CollisionOrnament(D3DXVECTOR3 pos)
 
 	for (int nCntOrnament = 0; nCntOrnament < MAX_ORNAMENT; nCntOrnament++, pOrnament++)
 	{
+		// 使われている且つ、掴める状態なら
 		if (pOrnament->bUse == true && pOrnament->bReady == true)
 		{
+			// スフィアの当たり判定を実行
 			if (CollisionLPSphere(GetMeshSphere(pOrnament->nIdxCollision), pos, 3.0f))
-			{
+			{ // 当たっていれば、最初に当たったオーナメントのインデックスを返す
 				return nCntOrnament;
 			}
 		}
 	}
 
+	// 当たっていなければ、失敗値を返す
 	return -1;
 }
 
@@ -497,11 +497,12 @@ void SetParentOrnament(int nIdxOrnament, LPD3DXMATRIX pMtxParent)
 //================================================================================================================
 void RemoveParentOrnament(int nIdxOrnament)
 {
+	// インデックスが使われていなければ、終了
 	if (nIdxOrnament < 0 || nIdxOrnament >= g_nCounterOrnament) return;
 
-	g_aOrnament[nIdxOrnament].bCatched = false;
-	g_aOrnament[nIdxOrnament].pMtxParent = NULL;
-	InvisibleShadow(g_aOrnament[nIdxOrnament].nIdShadow, 1.0f);
+	g_aOrnament[nIdxOrnament].bCatched = false;		// 所持状態を解除
+	g_aOrnament[nIdxOrnament].pMtxParent = NULL;	// 親マトリックスを解除
+	InvisibleShadow(g_aOrnament[nIdxOrnament].nIdShadow, 1.0f);		// 影を出現
 }
 
 //================================================================================================================
@@ -509,18 +510,25 @@ void RemoveParentOrnament(int nIdxOrnament)
 //================================================================================================================
 void ShotOrnament(int nIdxOrnament, D3DXVECTOR3 vec, float fSpeed)
 {
+	// インデックスが使われていなければ、終了
 	if (nIdxOrnament < 0 || nIdxOrnament >= g_nCounterOrnament) return;
 
 	PORNAMENT pOrnament = &g_aOrnament[nIdxOrnament];
 	Player *pPlayer = GetPlayer();
+
+	// オーナメントが掴まれていなければ、終了
 	if (pOrnament->bCatched != true) return;
+
+	// 投擲状態に設定
 	g_aOrnament[nIdxOrnament].bReady = false;
 	pOrnament->move.x = sinf(vec.y + D3DX_PI) * fSpeed;
 	pOrnament->move.z = cosf(vec.y + D3DX_PI) * fSpeed;
 
+	// 位置を設定
 	D3DXVec3TransformCoord(&pOrnament->pos, &pOrnament->pos, &pOrnament->mtxWorld);
 	pOrnament->rot = pPlayer->rot;
 
+	// 親マトリックスを解除
 	RemoveParentOrnament(nIdxOrnament);
 }
 
@@ -539,18 +547,23 @@ PORNAMENT GetOrnament(int nIdxOrnament)
 //================================================================================================================
 void SetOrnamentRand(int nNumOrnament)
 {
+	int nMaxOrnament = nNumOrnament;
 	int nCntOrnament = 0;
 	MODE modeNext = GetModeNext();
 
-	if (nNumOrnament >= MAX_ORNAMENT) nNumOrnament = MAX_ORNAMENT;
+	// もしオーナメント配置数が上限を超えていたら、上限に設定
+	if (nMaxOrnament >= MAX_ORNAMENT) nMaxOrnament = MAX_ORNAMENT;
 
-	while(nCntOrnament < nNumOrnament)
+	while(nCntOrnament < nMaxOrnament)
 	{
+		// ゲーム中なら
 		if (modeNext == MODE_GAME)
 		{
+			// ランダムな位置を取得
 			D3DXVECTOR3 pos = GetRandomVector3(800, 300, 900);
 			D3DXVECTOR3 move;
 
+			// 範囲内にいるか判定
 			if (pos.z < 500.0f && pos.z > -400.0f
 				&& pos.x > -400.0f && pos.x < 400.0f)
 			{
@@ -560,22 +573,23 @@ void SetOrnamentRand(int nNumOrnament)
 				}
 
 				if (pos.x > 100.0f && pos.z < 300.0f)
-				{
+				{ // 子供部屋の下
 					continue;
 				}
 
+				// 床との当たり判定
 				CollisionFloor(&pos, &pos, &move, 0.0f);
 
-				CollisionMeshField(&pos, &pos, &move);
-
+				// オブジェクトとの当たり判定
 				if (CollisionObject(&pos, &pos, &move, 0.0f))
-				{
+				{ // 埋まっていたらやり直し
 					continue;
 				}
 
-				int nType = rand() % g_nCounterOrnamentInfo;
-				SetOrnament(pos, VECNULL, nType, 0.0f, g_aOrnamentInfo[nType].fRadius);
-				nCntOrnament++;
+				// 設置可能状態
+				int nType = rand() % g_nCounterOrnamentInfo;								// オブジェクトの種類をランダム設定
+				SetOrnament(pos, VECNULL, nType, 0.0f, g_aOrnamentInfo[nType].fRadius);		// 設定した位置にオーナメントを配置
+				nCntOrnament++;			// 配置数を増加
 			}
 		}
 		else if (modeNext == MODE_TUTORIAL)

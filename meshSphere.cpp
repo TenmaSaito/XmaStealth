@@ -37,8 +37,10 @@ int g_nCounterSphere;						// 合計数
 //================================================================================================================
 void InitMeshSphere(void)
 {
-	LPMESHSPHERE pSphere = &g_aMeshSphere[0];
-	ZeroMemory(&g_aMeshSphere[0], sizeof(MeshSphere) * MAX_MESH);
+	for (int nCntMesh = 0; nCntMesh < MAX_MESH; nCntMesh++)
+	{
+		ZeroMemory(&g_aMeshSphere[nCntMesh], sizeof(MeshSphere));
+	}
 
 	g_nCounterSphere = 0;
 }
@@ -53,13 +55,25 @@ void UninitMeshSphere(void)
 	for (int nCntRelease = 0; nCntRelease < MAX_MESH; nCntRelease++, pSphere++)
 	{
 		/*** テクスチャの破棄 ***/
-		RELEASE(pSphere->pTexture);
+		if (pSphere->pTexture != NULL)
+		{
+			pSphere->pTexture->Release();
+			pSphere->pTexture = NULL;
+		}
 
 		/*** 頂点バッファの破棄 ***/
-		RELEASE(pSphere->pVtxBuff);
+		if (pSphere->pVtxBuff != NULL)
+		{
+			pSphere->pVtxBuff->Release();
+			pSphere->pVtxBuff = NULL;
+		}
 
 		/*** インデックスバッファの破棄 ***/
-		RELEASE(pSphere->pIdxBuff);
+		if (pSphere->pIdxBuff != NULL)
+		{
+			pSphere->pIdxBuff->Release();
+			pSphere->pIdxBuff = NULL;
+		}
 	}
 }
 
@@ -150,12 +164,12 @@ void DrawMeshSphere(void)
 				pDevice->SetTexture(0, GetTexture(-1));
 
 				// ポリゴンの描画
-				//pDevice->DrawIndexedPrimitive(D3DPT_TRIANGLEFAN,
-				//	0,
-				//	0,
-				//	INDEXNUM_TOP(pSphere->nXBlock),		// 頂点数
-				//	0,
-				//	pSphere->nXBlock);		// 描画するプリミティブ(三角ポリゴン)の数
+				pDevice->DrawIndexedPrimitive(D3DPT_TRIANGLEFAN,
+					0,
+					0,
+					INDEXNUM_TOP(pSphere->nXBlock),		// 頂点数
+					0,
+					pSphere->nXBlock);		// 描画するプリミティブ(三角ポリゴン)の数
 
 				/*** インデックスを利用したポリゴンの描画 ***/
 				pDevice->DrawIndexedPrimitive(D3DPT_TRIANGLESTRIP,
@@ -166,12 +180,12 @@ void DrawMeshSphere(void)
 					DRAWPRIM_NUM(pSphere->nXBlock, pSphere->nYBlock));	// 描画するプリミティブ(三角ポリゴン)の数
 
 				// ポリゴンの描画
-				//pDevice->DrawIndexedPrimitive(D3DPT_TRIANGLEFAN,
-				//	0,
-				//	0,
-				//	INDEXNUM_DOWN(pSphere->nXBlock),		// 頂点数
-				//	(pSphere->nXBlock + 2) + INDEX_BUFFER(((pSphere->nXBlock + 1) * (pSphere->nYBlock + 1)), pSphere->nXBlock, pSphere->nYBlock),
-				//	pSphere->nXBlock);		// 描画するプリミティブ(三角ポリゴン)の数
+				pDevice->DrawIndexedPrimitive(D3DPT_TRIANGLEFAN,
+					0,
+					0,
+					INDEXNUM_DOWN(pSphere->nXBlock),		// 頂点数
+					(pSphere->nXBlock + 2) + INDEX_BUFFER(((pSphere->nXBlock + 1) * (pSphere->nYBlock + 1)), pSphere->nXBlock, pSphere->nYBlock),
+					pSphere->nXBlock);		// 描画するプリミティブ(三角ポリゴン)の数
 			}
 		}
 	}
@@ -190,8 +204,10 @@ int SetMeshSphere(_OffSet_ D3DXVECTOR3 pos, D3DXVECTOR3 rot, D3DXCOLOR col, int 
 
 	for (int nCntSphere = 0; nCntSphere < MAX_MESH; nCntSphere++, pSphere++)
 	{
+		// 球が使われていなければ
 		if (pSphere->bUse == false)
 		{
+			// 情報の適用
 			pSphere->pos = pos;
 			pSphere->rot = rot;
 			pSphere->col = col;
@@ -202,214 +218,216 @@ int SetMeshSphere(_OffSet_ D3DXVECTOR3 pos, D3DXVECTOR3 rot, D3DXCOLOR col, int 
 			pSphere->bDisp = bDisp;
 			pSphere->bCollision = false;
 
-			/*** 頂点バッファの生成 ***/
-			pDevice->CreateVertexBuffer(sizeof(VERTEX_3D) * (VTXMESH_SPHERE(nXBlock, nYBlock)),
-				D3DUSAGE_WRITEONLY,
-				FVF_VERTEX_3D,
-				D3DPOOL_MANAGED,
-				&pSphere->pVtxBuff,
-				NULL);
-
-			/*** 頂点バッファの設定 ***/
-			pSphere->pVtxBuff->Lock(0, 0, (void**)&pVtx, 0);
-
-			int nSphere = 0;
-
-			/*** 球の天井の座標設定 ***/
-			for (int nCntSphere = 0; nCntSphere < (pSphere->nXBlock + 1); nCntSphere++, pVtx++)
+			// もし球を描画するなら
+			if (bDisp == true)
 			{
-				float fAngle = 0.0f;
-				float fRadiusDiv = sinf((float)(nSphere) * (D3DX_PI / (float)(pSphere->nYBlock))) * pSphere->fRadius;
-				float fHeightDiv = cosf((float)(nSphere) * (D3DX_PI / (float)(pSphere->nYBlock))) * (pSphere->fRadius);
+				/*** 頂点バッファの生成 ***/
+				pDevice->CreateVertexBuffer(sizeof(VERTEX_3D) * (VTXMESH_SPHERE(nXBlock, nYBlock)),
+					D3DUSAGE_WRITEONLY,
+					FVF_VERTEX_3D,
+					D3DPOOL_MANAGED,
+					&pSphere->pVtxBuff,
+					NULL);
 
-				fAngle = (D3DX_2PI / (float)pSphere->nXBlock) * (nCntSphere - 1) * -1;
+				/*** 頂点バッファの設定 ***/
+				pSphere->pVtxBuff->Lock(0, 0, (void**)&pVtx, 0);
 
-				if (nCntSphere == 0)
-				{
-					pVtx->pos.x = 0.0f;
-					pVtx->pos.y = fHeightDiv;
-					pVtx->pos.z = 0.0f;
-					nSphere++;
-				}
-				else
-				{
-					pVtx->pos.x = sinf(fAngle) * (fRadiusDiv);
-					pVtx->pos.y = fHeightDiv;
-					pVtx->pos.z = cosf(fAngle) * (fRadiusDiv);
-				}
+				int nSphere = 0;
 
-				D3DXVECTOR3 nor = (pVtx->pos - pSphere->pos);
-				pVtx->col = col;
-				D3DXVec3Normalize(&nor, &nor);
-				pVtx->nor = nor;
-			}
-
-			/*** 球の中腹の座標設定 ***/
-			for (int nCntY = 0; nCntY < (nYBlock + 1); nCntY++)
-			{
-				/*** 頂点座標の設定の設定 + テクスチャ座標の設定 ***/
-				for (int nCntX = 0; nCntX < (nXBlock + 1); nCntX++, pVtx++)
+				/*** 球の天井の座標設定 ***/
+				for (int nCntSphere = 0; nCntSphere < (pSphere->nXBlock + 1); nCntSphere++, pVtx++)
 				{
 					float fAngle = 0.0f;
-					float fRadiusDiv = sinf((float)(nCntY + 1) * (D3DX_PI / (float)(nYBlock))) * fRadius;
-					float fHeightDiv = cosf((float)(nCntY + 1) * (D3DX_PI / (float)(nYBlock))) * (fRadius);
+					float fRadiusDiv = sinf((float)(nSphere) * (D3DX_PI / (float)(pSphere->nYBlock))) * pSphere->fRadius;
+					float fHeightDiv = cosf((float)(nSphere) * (D3DX_PI / (float)(pSphere->nYBlock))) * (pSphere->fRadius);
 
-					fAngle = (D3DX_2PI / (float)nXBlock) * nCntX;
+					fAngle = (D3DX_2PI / (float)pSphere->nXBlock) * (nCntSphere - 1) * -1;
 
-					D3DXVECTOR3 norDiv = {};
-					D3DXVECTOR3 posDiv = {};
-					D3DXVECTOR2 texDiv = {};
-
-					posDiv.x = sinf(fAngle) * (fRadiusDiv);
-					posDiv.y = fHeightDiv;
-					posDiv.z = cosf(fAngle) * (fRadiusDiv);
-
-					pVtx->pos = posDiv;
-
-					pVtx->col = col;
-
-					norDiv.x = posDiv.x - pos.x;
-					norDiv.y = posDiv.y - pos.y;
-					norDiv.z = posDiv.z - pos.z;
-
-					D3DXVec3Normalize(&norDiv, &norDiv);
-
-					pVtx->nor = norDiv;
-
-					pVtx->tex.x = (1.0f / (float)nXBlock) * nCntX;
-					pVtx->tex.y = (1.0f * (float)nCntY);
-				}
-			}
-
-			nSphere = 0;
-			InitedVec3(vec[300]);
-
-			/*** 球の下の座標設定 ***/
-			for (int nCntSphere = 0; nCntSphere < (pSphere->nXBlock + 1); nCntSphere++, pVtx++)
-			{
-				float fAngle = 0.0f;
-				float fRadiusDiv = sinf((float)(nSphere) * (D3DX_PI / (float)(pSphere->nYBlock))) * pSphere->fRadius;
-				float fHeightDiv = cosf((float)(nSphere) * (D3DX_PI / (float)(pSphere->nYBlock))) * (pSphere->fRadius);
-
-				fAngle = (D3DX_2PI / (float)pSphere->nXBlock) * (nCntSphere - 1);
-
-				if (nCntSphere == 0)
-				{
-					pVtx->pos.x = 0.0f;
-					pVtx->pos.y = -fHeightDiv;
-					pVtx->pos.z = 0.0f;
-					nSphere++;
-				}
-				else
-				{
-					pVtx->pos.x = sinf(fAngle) * (fRadiusDiv);
-					pVtx->pos.y = -fHeightDiv;
-					pVtx->pos.z = cosf(fAngle) * (fRadiusDiv);
-					vec[nCntSphere] = pVtx->pos + pos;
-				}
-
-				D3DXVECTOR3 nor = (pVtx->pos - pSphere->pos);
-				pVtx->col = col;
-				D3DXVec3Normalize(&nor, &nor);
-				pVtx->nor = nor;
-			}
-
-			/*** 頂点バッファの設定を終了 ***/
-			pSphere->pVtxBuff->Unlock();
-
-			/*** インデックスバッファの生成 ***/
-			pDevice->CreateIndexBuffer(sizeof(WORD) * (INDEX_BUFFER(((nXBlock + 1) * (nYBlock + 1)), nXBlock, nYBlock) + ((nXBlock + 2) * 2)),		// sizeof(WORD) * 必要なインデックス数
-				D3DUSAGE_WRITEONLY,
-				D3DFMT_INDEX16,
-				D3DPOOL_MANAGED,
-				&pSphere->pIdxBuff,
-				NULL);
-
-			/*** 頂点バッファの設定 ***/
-			pSphere->pIdxBuff->Lock(0, 0, (void**)&pIdx, 0);
-
-			/*** 球の天井のインデックス設定 ***/
-			for (int nCntSphere = 0; nCntSphere < (nXBlock + 2); nCntSphere++, pIdx++)
-			{
-				*pIdx = (nCntSphere % (nXBlock + 1)) + (nCntSphere / (nXBlock + 1));
-			}
-
-			int nCount = 0;
-			int nCounts = 0;
-			int nLine = 0;
-			int nOffSet = (nXBlock + 1);
-
-			for (int nCntIndex = 0; nCntIndex < INDEX_BUFFER(((nXBlock + 1) * (nYBlock + 1)), nXBlock, nYBlock); nCntIndex++, pIdx++)
-			{
-				if (nCntIndex != 0 && nCounts == (nXBlock + 1))
-				{ // 0ではなく、且つ上辺の点が右端に着いたとき
-					nCounts--;
-					*pIdx = nCounts + ((nXBlock + 1) * nLine);
-
-					*pIdx += nOffSet;
-
-					nCounts = 0;
-				}
-				else if (nCntIndex != 0 && nCount == (nXBlock + 1) && nCounts == 0)
-				{ // 0ではなく、且つ右端の多重設定が済んでいる且つ、下辺の点が右端に着いたとき
-					nCount = 0;
-					nLine++;
-					*pIdx = nCount + ((nXBlock + 1) * (nLine + 1));
-
-					*pIdx += nOffSet;
-				}
-				else
-				{
-					if (nCntIndex == 0)
-					{ // 初回限定0の場合
-						*pIdx = nCount + ((nXBlock + 1) * (nLine + 1));
-
-						*pIdx += nOffSet;
-
-						nCount++;
-					}
-					else if (nCntIndex % 2 == 0)
-					{ // 偶数の場合	
-						*pIdx = nCount + ((nXBlock + 1) * (nLine + 1));
-
-						*pIdx += nOffSet;
-
-						nCount++;
+					if (nCntSphere == 0)
+					{
+						pVtx->pos.x = 0.0f;
+						pVtx->pos.y = fHeightDiv;
+						pVtx->pos.z = 0.0f;
+						nSphere++;
 					}
 					else
-					{ // 奇数の場合
+					{
+						pVtx->pos.x = sinf(fAngle) * (fRadiusDiv);
+						pVtx->pos.y = fHeightDiv;
+						pVtx->pos.z = cosf(fAngle) * (fRadiusDiv);
+					}
+
+					D3DXVECTOR3 nor = (pVtx->pos - pSphere->pos);
+					pVtx->col = col;
+					D3DXVec3Normalize(&nor, &nor);
+					pVtx->nor = nor;
+				}
+
+				/*** 球の中腹の座標設定 ***/
+				for (int nCntY = 0; nCntY < (nYBlock + 1); nCntY++)
+				{
+					/*** 頂点座標の設定の設定 + テクスチャ座標の設定 ***/
+					for (int nCntX = 0; nCntX < (nXBlock + 1); nCntX++, pVtx++)
+					{
+						float fAngle = 0.0f;
+						float fRadiusDiv = sinf((float)(nCntY + 1) * (D3DX_PI / (float)(nYBlock))) * fRadius;
+						float fHeightDiv = cosf((float)(nCntY + 1) * (D3DX_PI / (float)(nYBlock))) * fRadius;
+
+						fAngle = (D3DX_2PI / (float)nXBlock) * nCntX;
+
+						D3DXVECTOR3 norDiv = {};
+						D3DXVECTOR3 posDiv = {};
+						D3DXVECTOR2 texDiv = {};
+
+						posDiv.x = sinf(fAngle) * (fRadiusDiv);
+						posDiv.y = fHeightDiv;
+						posDiv.z = cosf(fAngle) * (fRadiusDiv);
+
+						pVtx->pos = posDiv;
+
+						pVtx->col = col;
+
+						norDiv.x = posDiv.x - pos.x;
+						norDiv.y = posDiv.y - pos.y;
+						norDiv.z = posDiv.z - pos.z;
+
+						D3DXVec3Normalize(&norDiv, &norDiv);
+
+						pVtx->nor = norDiv;
+
+						pVtx->tex.x = (1.0f / (float)nXBlock) * nCntX;
+						pVtx->tex.y = (1.0f * (float)nCntY);
+					}
+				}
+
+				nSphere = 0;
+
+				/*** 球の下の座標設定 ***/
+				for (int nCntSphere = 0; nCntSphere < (pSphere->nXBlock + 1); nCntSphere++, pVtx++)
+				{
+					float fAngle = 0.0f;
+					float fRadiusDiv = sinf((float)(nSphere) * (D3DX_PI / (float)(pSphere->nYBlock))) * pSphere->fRadius;
+					float fHeightDiv = cosf((float)(nSphere) * (D3DX_PI / (float)(pSphere->nYBlock))) * (pSphere->fRadius);
+
+					fAngle = (D3DX_2PI / (float)pSphere->nXBlock) * (nCntSphere - 1);
+
+					if (nCntSphere == 0)
+					{
+						pVtx->pos.x = 0.0f;
+						pVtx->pos.y = -fHeightDiv;
+						pVtx->pos.z = 0.0f;
+						nSphere++;
+					}
+					else
+					{
+						pVtx->pos.x = sinf(fAngle) * (fRadiusDiv);
+						pVtx->pos.y = -fHeightDiv;
+						pVtx->pos.z = cosf(fAngle) * (fRadiusDiv);
+					}
+
+					D3DXVECTOR3 nor = (pVtx->pos - pSphere->pos);
+					pVtx->col = col;
+					D3DXVec3Normalize(&nor, &nor);
+					pVtx->nor = nor;
+				}
+
+				/*** 頂点バッファの設定を終了 ***/
+				pSphere->pVtxBuff->Unlock();
+
+				/*** インデックスバッファの生成 ***/
+				pDevice->CreateIndexBuffer(sizeof(WORD) * (INDEX_BUFFER(((nXBlock + 1) * (nYBlock + 1)), nXBlock, nYBlock) + ((nXBlock + 2) * 2)),		// sizeof(WORD) * 必要なインデックス数
+					D3DUSAGE_WRITEONLY,
+					D3DFMT_INDEX16,
+					D3DPOOL_MANAGED,
+					&pSphere->pIdxBuff,
+					NULL);
+
+				/*** 頂点バッファの設定 ***/
+				pSphere->pIdxBuff->Lock(0, 0, (void**)&pIdx, 0);
+
+				/*** 球の天井のインデックス設定 ***/
+				for (int nCntSphere = 0; nCntSphere < (nXBlock + 2); nCntSphere++, pIdx++)
+				{
+					*pIdx = (nCntSphere % (nXBlock + 1)) + (nCntSphere / (nXBlock + 1));
+				}
+
+				int nCount = 0;
+				int nCounts = 0;
+				int nLine = 0;
+				int nOffSet = (nXBlock + 1);
+
+				for (int nCntIndex = 0; nCntIndex < INDEX_BUFFER(((nXBlock + 1) * (nYBlock + 1)), nXBlock, nYBlock); nCntIndex++, pIdx++)
+				{
+					if (nCntIndex != 0 && nCounts == (nXBlock + 1))
+					{ // 0ではなく、且つ上辺の点が右端に着いたとき
+						nCounts--;
 						*pIdx = nCounts + ((nXBlock + 1) * nLine);
 
 						*pIdx += nOffSet;
 
-						nCounts++;
+						nCounts = 0;
+					}
+					else if (nCntIndex != 0 && nCount == (nXBlock + 1) && nCounts == 0)
+					{ // 0ではなく、且つ右端の多重設定が済んでいる且つ、下辺の点が右端に着いたとき
+						nCount = 0;
+						nLine++;
+						*pIdx = nCount + ((nXBlock + 1) * (nLine + 1));
+
+						*pIdx += nOffSet;
+					}
+					else
+					{
+						if (nCntIndex == 0)
+						{ // 初回限定0の場合
+							*pIdx = nCount + ((nXBlock + 1) * (nLine + 1));
+
+							*pIdx += nOffSet;
+
+							nCount++;
+						}
+						else if (nCntIndex % 2 == 0)
+						{ // 偶数の場合	
+							*pIdx = nCount + ((nXBlock + 1) * (nLine + 1));
+
+							*pIdx += nOffSet;
+
+							nCount++;
+						}
+						else
+						{ // 奇数の場合
+							*pIdx = nCounts + ((nXBlock + 1) * nLine);
+
+							*pIdx += nOffSet;
+
+							nCounts++;
+						}
 					}
 				}
+
+				/*** 球の下のインデックス設定 ***/
+				for (int nCntSphere = 0; nCntSphere < (nXBlock + 2); nCntSphere++, pIdx++)
+				{
+					if (nCntSphere == 0)
+					{
+						*pIdx = VTXMESH_SPHERE(nXBlock, nYBlock) - (nXBlock + 1);
+					}
+					else
+					{
+						*pIdx = (nCntSphere % (nXBlock + 1)) + (VTXMESH_SPHERE(nXBlock, nYBlock) - (nXBlock + 1)) + (nCntSphere / (nXBlock + 1));
+					}
+				}
+
+				/*** インデックスバッファをアンロック ***/
+				pSphere->pIdxBuff->Unlock();
 			}
 
-			/*** 球の下のインデックス設定 ***/
-			for (int nCntSphere = 0; nCntSphere < (nXBlock + 2); nCntSphere++, pIdx++)
-			{
-				if (nCntSphere == 0)
-				{
-					*pIdx = VTXMESH_SPHERE(nXBlock, nYBlock) - (nXBlock + 1);
-				}
-				else
-				{
-					*pIdx = (nCntSphere % (nXBlock + 1)) + (VTXMESH_SPHERE(nXBlock, nYBlock) - (nXBlock + 1)) + (nCntSphere / (nXBlock + 1));
-				}
-			}
+			g_nCounterSphere++;		// 球の作成数を増加
 
-			/*** インデックスバッファをアンロック ***/
-			pSphere->pIdxBuff->Unlock();
-
-			g_nCounterSphere++;
-
-			return nCntSphere;
+			return nCntSphere;		// 作成した球のインデックスを返す
 		}
 	}
 
-	return -1;
+	return -1;		// もし球が作成できなかった場合、-1(使用不可)を返す
 }
 
 //================================================================================================================
@@ -417,15 +435,18 @@ int SetMeshSphere(_OffSet_ D3DXVECTOR3 pos, D3DXVECTOR3 rot, D3DXCOLOR col, int 
 //================================================================================================================
 int SetParentSphere(D3DXVECTOR3 pos, D3DXVECTOR3 rot, D3DXCOLOR col, int nXBlock, int nYBlock, float fRadius, bool bDisp, D3DXMATRIX* pMtxParent)
 {
+	if (pMtxParent == NULL) return -1;		// 引数の親マトリックスがNULLなら失敗値を返す
+
+	// 球の作成
 	int nIdxSphere = SetMeshSphere(pos, rot, col, nXBlock, nYBlock, fRadius, bDisp);
 
-	if(nIdxSphere == -1) return -1;
-	LPMESHSPHERE pSphere = &g_aMeshSphere[nIdxSphere];
+	if(nIdxSphere == -1) return -1;							// もし球が使えなかった場合,-1(当たり判定の作成失敗)を返す
+	LPMESHSPHERE pSphere = &g_aMeshSphere[nIdxSphere];		// 作成した球の情報を取得
 
-	pSphere->pMtxParent = pMtxParent;
-	pSphere->bCollision = true;
+	pSphere->pMtxParent = pMtxParent;						// 親マトリックスのポインタを設定
+	pSphere->bCollision = true;								// 球の当たり判定を使用する状態に設定
 
-	return nIdxSphere;
+	return nIdxSphere;										// 球のインデックスを返す
 }
 
 //================================================================================================================
@@ -433,6 +454,7 @@ int SetParentSphere(D3DXVECTOR3 pos, D3DXVECTOR3 rot, D3DXCOLOR col, int nXBlock
 //================================================================================================================
 LPMESHSPHERE GetMeshSphere(int nIdxSphere)
 {
+	// インデックス範囲を確認
 	if (nIdxSphere < 0 || nIdxSphere >= g_nCounterSphere)
 	{
 		return NULL;
@@ -593,23 +615,31 @@ bool CollisionIndexSphere(int nIndexSphere, D3DXVECTOR3 pos, float fRadius)
 //================================================================================================================
 bool CollisionLPSphere(LPMESHSPHERE pSphere, D3DXVECTOR3 pos, float fMag)
 {
+	// ポインタがNULLなら失敗
 	if (pSphere == NULL) return false;
 
+	// スフィアが使われていれば
 	if (pSphere->bUse == true)
 	{
-		InitedVec3(length);
-		Vec3(posRepair = pSphere->pos);
+		D3DXVECTOR3 length;
+		D3DXVECTOR3 posRepair = pSphere->pos;
 		float fLength = 0.0f;
 
-		D3DXVec3TransformCoord(&posRepair, &posRepair, &pSphere->mtxWorld);
+		// 変換後の位置を取得
+		posRepair.x = pSphere->mtxWorld._41;
+		posRepair.y = pSphere->mtxWorld._42;
+		posRepair.z = pSphere->mtxWorld._43;
 
+		// ベクトルを取得
 		length = pos - posRepair;
+		// ベクトルから距離を取得
 		fLength = D3DXVec3Length(&length);
 		if (fLength <= pSphere->fRadius * fMag)
-		{
+		{ // 距離が半径未満なら成功
 			return true;
 		}
 	}
 
+	// 距離が半径以上なら失敗
 	return false;
 }

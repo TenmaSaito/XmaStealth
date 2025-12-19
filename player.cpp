@@ -82,8 +82,17 @@ void InitPlayer(void)
 	g_fTakecopterSpeed = 0.0f;
 	pPlayer->nIdShadow = -1;
 	pPlayer->bJump = false;
-	memset(&pPlayer->aModel[0], NULL, sizeof(PartsInfo) * 15);
-	memset(&pPlayer->aMotionInfo[0], NULL, sizeof(MOTION_INFO) * MAX_MOTION);
+	
+	for (int nCntModel = 0; nCntModel < MAX_MODEL_PLAYER; nCntModel++)
+	{
+		ZeroMemory(&pPlayer->aModel[nCntModel], sizeof pPlayer->aModel[nCntModel]);
+	}
+
+	for (int nCntMotion = 0; nCntMotion < MAX_MOTION; nCntMotion++)
+	{
+		ZeroMemory(&pPlayer->aMotionInfo[nCntMotion], sizeof pPlayer->aMotionInfo[nCntMotion]);
+	}
+
 	g_bUseSinCurve = false;
 
 	/*** 影の生成 ***/
@@ -96,7 +105,7 @@ void InitPlayer(void)
 	g_nCounterPlayer = 0;
 	g_nCntPlayerOrnament = 0;
 
-	memset(&g_aOrnamentShot[0], -1, sizeof(int) * MAX_CATCH_ORNAMENT);
+	memset(&g_aOrnamentShot[0], -1, sizeof g_aOrnamentShot);
 }
 
 //================================================================================================================
@@ -114,17 +123,11 @@ void UpdatePlayer(void)
 {
 	/*** カメラ情報の取得 ***/
 	Camera *pCamera = GetCamera();
-	Player *pPlayer = &g_player;		// プレイヤー情報へのアドレス
-	D3DXVECTOR3 effectPos;				// エフェクトの位置
-	D3DXVECTOR3 posStart;
-	D3DXVECTOR3 posEnd;
-	D3DXVECTOR3 posMove;
-	D3DXVECTOR3 posReflect;
-	D3DXVECTOR3 posReflectAnothor;
-	D3DXVECTOR3 pos;
-	float fAngle = 0.0f;		// 角度修正用変数
-	bool bPushKey = false;		// 移動したか
+	Player *pPlayer = &g_player;	// プレイヤー情報へのアドレス
+	float fAngle = 0.0f;			// 角度修正用変数
+	bool bPushKey = false;			// 移動したか
 
+	// 過去の位置を更新
 	pPlayer->posOld = pPlayer->pos;
 #if 1
 	/*** ポリゴンの移動！ (※ 頂点バッファのロック・アンロックは必要なし！) ***/
@@ -254,15 +257,6 @@ void UpdatePlayer(void)
 	}
 
 #endif
-	effectPos = pPlayer->pos;
-	effectPos.y += 6.0f;
-
-	/*** エンジンの煙 ***/
-	if (bPushKey == true)
-	{
-		//SetEffect(effectPos, D3DXVECTOR3(0.0f, 0.0f, 0.0f), 0.0f);
-	}
-
 	pPlayer->aModel[1].rotLocal.y += g_fTakecopterSpeed;
 	/*** 角度の修正! ***/
 	RepairRot(&pPlayer->aModel[1].rotLocal.y, &pPlayer->aModel[1].rotLocal.y);
@@ -310,6 +304,7 @@ void UpdatePlayer(void)
 		SetMotionType(MOTIONTYPE_ACTION, true, 10);
 	}
 
+	// オーナメントの投擲
 	if (GetKeyboardTrigger(DIK_RETURN) || GetJoypadTrigger(JOYKEY_RIGHTTRIGGER))
 	{
 		D3DXVECTOR3 vec = pCamera->rot;
@@ -319,17 +314,18 @@ void UpdatePlayer(void)
 		SetVibration(0, 20000, 60);
 	}
 
+	// オーナメントの取得
 	if (g_nCntPlayerOrnament < MAX_CATCH_ORNAMENT)
 	{
 		int nIdxCollision = CollisionOrnament(pPlayer->pos);
 		if (nIdxCollision != -1)
-		{
+		{ // オーナメントのインデックスを取得できていれば,キャッチ
 			CatchOrnament(nIdxCollision);
 		}
 	}
 
+	// 位置の反映
 	pPlayer->pos.x += pPlayer->move.x;
-	PrintDebugProc("PMOVE %f\n", pPlayer->move.y);
 	pPlayer->pos.y += pPlayer->move.y;
 	pPlayer->pos.z += pPlayer->move.z;
 
@@ -345,8 +341,6 @@ void UpdatePlayer(void)
 			SetMotionType(MOTIONTYPE_LANDING, true, 10);
 		}
 	}
-
-	PrintDebugProc("PMOVE %f\n", pPlayer->move.y);
 
 	if (CollisionObject(&pPlayer->pos, &pPlayer->posOld, &pPlayer->move, pPlayer->fHeight) == true)
 	{
@@ -397,12 +391,14 @@ void UpdatePlayer(void)
 	/*** 影の移動 ***/
 	SetPositionShadow(pPlayer->nIdShadow, pPlayer->pos, pPlayer->rot);
 
-	PrintDebugProc("PlayerPos / X : %f Y : %f Z : %f\n", pPlayer->pos.x, pPlayer->pos.y, pPlayer->pos.z);
-	PrintDebugProc("TakecopterSpd / %f\n", g_fTakecopterSpeed);
-	PrintDebugProc("Pos[0] / %~3f\n", pPlayer->aModel[0].pos.x, pPlayer->aModel[0].pos.y, pPlayer->aModel[0].pos.z);
-
 	// 予測線 ======================
 #if 0
+	D3DXVECTOR3 posStart;
+	D3DXVECTOR3 posEnd;
+	D3DXVECTOR3 posMove;
+	D3DXVECTOR3 posReflect;
+	D3DXVECTOR3 posReflectAnothor;
+
 	posStart = pPlayer->pos;
 	posStart.y = pPlayer->pos.y;
 	posEnd.x = pPlayer->pos.x + sinf(pPlayer->rot.y + D3DX_PI) * 10000.0f;
@@ -1064,20 +1060,26 @@ bool CatchOrnament(int nIdOrnament)
 {
 	Player *pPlayer = &g_player;		// プレイヤー情報へのアドレス
 
+	// オーナメントの掴める最大数以上なら、失敗
 	if (g_nCntPlayerOrnament >= MAX_CATCH_ORNAMENT) return false;
 
 	for (int nCntCheck = 0; nCntCheck < g_nCntPlayerOrnament; nCntCheck++)
 	{
+		// 既につかんでいるオーナメントなら失敗
 		if (g_aOrnamentShot[nCntCheck] == nIdOrnament) return false;
 	}
 
+	// オーナメントのインデックスの取得が出来ていなければ失敗
 	if (nIdOrnament == -1) return false;
 
+	// オーナメントのインデックスを持っているインデックスに設定
 	g_aOrnamentShot[g_nCntPlayerOrnament] = nIdOrnament;
 
 	if (g_nCntPlayerOrnament != 0)
-	{
+	{ // もし既にオーナメントを持っていれば
 		PORNAMENT pOrnament = GetOrnament(nIdOrnament);
+
+		// オーナメントが取得できていれば
 		if (pOrnament != NULL)
 		{ // オーナメントの親マトリックスを頭に設定
 			SetParentOrnament(nIdOrnament, &pPlayer->aModel[pPlayer->nModelHead].mtxWorld);
@@ -1087,18 +1089,20 @@ bool CatchOrnament(int nIdOrnament)
 		}
 	}
 	else
-	{ // オーナメントの親マトリックスを手に設定
+	{ // オーナメントを持っていなければ、オーナメントの親マトリックスを手に設定
 		PORNAMENT pOrnament = GetOrnament(nIdOrnament);
+
+		// オーナメントが取得できていれば
 		if (pOrnament != NULL)
-		{
+		{ // 掴み状態に設定
 			pOrnament->pos = VECNULL;
 			SetParentOrnament(nIdOrnament, &pPlayer->aModel[pPlayer->nModelHand].mtxWorld);
 		}
 	}
 
-	g_nCntPlayerOrnament++;
-	if (pPlayer->nIdx2DPolygon == -1)
-	{
+	g_nCntPlayerOrnament++;			// 持っているオーナメントの総数を増やす
+	if (pPlayer->nIdx2DPolygon == -1 && GetMode() == MODE_TUTORIAL)
+	{ // チュートリアルならポリゴン表示
 		pPlayer->nIdx2DPolygon = Set2DPolygon(D3DXVECTOR3(1000.0f, 550.0f, 0.0f), VECNULL, D3DXVECTOR2(400.0f, 200.0f), 4);
 	}
 

@@ -14,17 +14,17 @@
 //*************************************************************************************************
 //*** マクロ定義 ***
 //*************************************************************************************************
-#define NUM_PLACE			(2)				// スコアの桁数
+#define NUM_PLACE			(3)				// スコアの桁数
 #define NUM_WIDTH			(25)			// 一桁の横幅
 #define NUM_HEIGHT			(35)			// 一桁の縦幅
 #define MAX_RANKING			(5)				// 表示する順位の数
 #define FIRSTMOVE_RANKING	(4)				// 最初に右から出て来る順位
 #define MOVE_SPD			D3DXVECTOR3(15.0f,0.0f,0.0f)								// 移動する速さ
 #define GOAL_POS			D3DXVECTOR3(600.0f, 150.0f + (103.0f * (nCntRankingScore + 1)), 0.0f)		// 最終的なスコアの位置
-#define FILENAME_RANKING_EASY	"data\\bin\\RANKING\\Ranking.bin"					// ランキング保存用ファイル名
-#define FILENAME_RANKING_NORMAL	"data\\bin\\RANKING\\Ranking.bin"					// ランキング保存用ファイル名(NORMAL)
-#define FILENAME_RANKING_HARD	"data\\bin\\RANKING\\Ranking_H.bin"					// ランキング保存用ファイル名(HARD)
-#define FILENAME_RESET			"data\\bin\\RANKING\\RankingScore_Reset.bin"		// リセット用バイナリファイル名
+#define FILENAME_RANKING_EASY	"data\\RANKING\\Ranking.bin"					// ランキング保存用ファイル名
+#define FILENAME_RANKING_NORMAL	"data\\RANKING\\Ranking.bin"					// ランキング保存用ファイル名(NORMAL)
+#define FILENAME_RANKING_HARD	"data\\RANKING\\Ranking_H.bin"					// ランキング保存用ファイル名(HARD)
+#define FILENAME_RESET			"data\\RANKING\\RankingScore_Reset.bin"		// リセット用バイナリファイル名
 #define RESET_COMMAND_NUM	(7)				// スコアリセット時に入力するキーの合計数
 
 //**********************************************************************************
@@ -116,7 +116,7 @@ void InitRankingScore(void)
 
 	/*** テクスチャの読み込み ***/
 	D3DXCreateTextureFromFile(pDevice,
-		"data\\TEXTURE\\UI\\UI_STOCKNUM.png",
+		"data\\TEXTURE\\number003.png",
 		&g_pTextureRankingScore);
 
 	/*** 頂点バッファの生成 ***/

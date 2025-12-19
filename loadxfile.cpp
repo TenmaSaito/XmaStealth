@@ -118,7 +118,7 @@ bool DeleteComments(char *aStr);
 //****************************************************************************************************************
 //*** グローバル変数 ***
 //****************************************************************************************************************
-LPDIRECT3DTEXTURE9 g_apTextureModel[MODE_MAX][MAX_TEXTURE] = {};		// 読み込んだテクスチャ
+LPDIRECT3DTEXTURE9 g_apTextureModel[MAX_TEXTURE] = {};		// 読み込んだテクスチャ
 char g_aXFileName[MAX_MODEL][MAX_PATH];				// Xファイルのパス
 char g_aTextureFileName[MAX_TEXTURE][MAX_PATH];		// テクスチャパス
 int g_nTextureNum = 0;				// 読み込むテクスチャ数
@@ -131,166 +131,7 @@ bool g_bReadData[MODE_MAX] = {};
 //================================================================================================================
 HRESULT InitData(_In_ const char* pScriptFileName, MODE modeSet)
 {
-	/*** デバイスの取得 ***/
-	LPDIRECT3DDEVICE9 pDevice = GetDevice();
-	HWND hWnd = GetHandleWindow();
-	if (hWnd == NULL)
-	{ // ハンドル有無確認
-		return E_FAIL;
-	}
-
-	if (pScriptFileName == NULL)
-	{
-		return E_FAIL;
-	}
-
-	/** スクリプト読み込み関連 **/
-	FILE* pFile = NULL;				// ファイルポインタ
-	HRESULT hr = E_FAIL;			// ファイルの読み込み確認処理
-	char aStr[MAX_PATH * 5] = {};		// Xファイルのファイル名
-	char aTexturePath[MAX_PATH * 2] = {};		// テクスチャパス
-	char* PosTrash;					// ゴミ捨て場(コメント消去用変数)
-	char* pStart;					// 値の開始位置
-	const char* pNull = "\0";		// 何もなし
-	char aErrorText[MAX_PATH * 2] = {};	// エラー文用
-
-	/** 設置前パス読み込み関連 **/
-	int nCntTexture = 0;			// 読み込んだテクスチャ数
-	int nCntModel = 0;				// 現在のモデル数
-	
-	/*** ファイルオープン ***/
-	pFile = fopen(pScriptFileName, "r");
-	if (pFile == NULL)
-	{ // ファイルオープン失敗時
-		GenerateMessageBox(MB_ICONERROR, "Error (0)", "Scriptファイルの読み込みに失敗しました。");
-		return E_FAIL;
-	}
-
-	/*** SCRIPT確認 ***/
-	while (1)
-	{
-		memset(aStr, NULL, sizeof(aStr));					// 文字列を初期化
-		(void)fgets(aStr, sizeof(aStr), pFile);				// メモ帳から一列取得
-		/*** コメント消去処理 ***/
-		if (strncmp(aStr, "#", 1) != 0 && strncmp(aStr, "\n", 1) != 0)
-		{ // 取得後、最初の文字が#(コメントアウト宣言)だった場合、読み込まない
-			PosTrash = strstr(aStr, "\n");					// 改行がないか確認
-			if (PosTrash != NULL) strcpy(PosTrash, "");		// あれば消去
-
-			PosTrash = strstr(aStr, "#");					// 列の途中に#がないか確認
-			if (PosTrash != NULL) strcpy(PosTrash, "");		// あれば、それ以降の文字列を消去
-
-			PosTrash = strstr(aStr, "\t");					// タブスペースがないか確認
-			while (PosTrash != NULL)
-			{
-				if (PosTrash != NULL)
-				{
-					if (PosTrash[0] == aStr[0])
-					{
-						strcpy(aStr, &aStr[1]);
-						PosTrash = &PosTrash[1];				// あれば消去
-					}
-					else
-					{
-						strncpy(PosTrash, "", sizeof(char));	// あれば消去
-					}
-				}
-
-				PosTrash = strstr(aStr, "\t");					// タブスペースがないか確認
-			}
-
-			if (strcmp(aStr, "SCRIPT") == NULL)
-			{ // SCRIPT発見時読み込み開始
-				break;
-			}
-			else if (feof(pFile) != NULL)
-			{ // 発見できなかった場合読み込み終了 E_FAIL
-				GenerateMessageBox(MB_ICONERROR, "Error (1)", "Scriptの読み込み開始位置が指定されていません。");
-
-				/*** 読み込み終了 ***/
-				fclose(pFile);
-
-				return E_FAIL;
-			}
-		}
-	}
-
-	/*** 読み込みループ処理 ***/
-	while (1)
-	{
-		memset(aStr, NULL, sizeof(char) * (MAX_PATH * 5));					// 文字列を初期化
-		(void)fgets(aStr, sizeof(char) * (MAX_PATH * 5), pFile);				// メモ帳から一列取得
-
-		if (feof(pFile) != 0) break;						// もし取得後EOFの場合、読み込み終了
-		/*** コメント消去処理 ***/
-		if (strncmp(aStr, "#", 1) != 0 && strncmp(aStr, "\n", 1) != 0)
-		{ // 取得後、最初の文字が#(コメントアウト宣言)だった場合、読み込まない
-			PosTrash = strstr(aStr, "\n");					// 改行がないか確認
-			if (PosTrash != NULL) strcpy(PosTrash, "");		// あれば消去
-
-			PosTrash = strstr(aStr, "#");					// 列の途中に#がないか確認
-			if (PosTrash != NULL) strcpy(PosTrash, "");		// あれば、それ以降の文字列を消去
-
-			PosTrash = strstr(aStr, "\t");					// タブスペースがないか確認
-			while (PosTrash != NULL)
-			{
-				if (PosTrash != NULL)
-				{
-					if (PosTrash[0] == aStr[0])
-					{
-						strcpy(aStr, &aStr[1]);
-						PosTrash = &PosTrash[1];				// あれば消去
-					}
-					else
-					{
-						strncpy(PosTrash, "", sizeof(char));	// あれば消去
-					}
-				}
-
-				PosTrash = strstr(aStr, "\t");					// タブスペースがないか確認
-			}
-
-			/*** END_SCRIPTか確認 ***/
-			if (strstr(aStr, READ_TEXTURENUM) != NULL)
-			{ // 読み込むテクスチャ数を取得
-				pStart = strchr(aStr, '=');
-
-				/** テクスチャ数を取得 **/
-				(void)sscanf(pStart + 1, "%d", &g_nTextureNum);
-				if (g_nTextureNum > MAX_TEXTURE)
-				{ // 読み込むテクスチャ数が上限を超えていた場合、上限以下に制限
-					g_nTextureNum = MAX_TEXTURE;
-				}
-			}
-			else if (strstr(aStr, READ_TEXTUREPATH) != NULL && nCntTexture < g_nTextureNum)
-			{ // テクスチャパスの読み取り及びテクスチャロード (読み込む数分のみ)
-				memset(g_aTextureFileName[nCntTexture], NULL, sizeof(char) * 260);		// 文字列を初期化
-
-				pStart = strchr(aStr, '=');
-
-				/** テクスチャパスの読み取り **/
-				(void)sscanf(pStart + 1, "%s", &g_aTextureFileName[nCntTexture]);
-
-				CheckPath(&g_aTextureFileName[nCntTexture][0]);
-
-				/*** テクスチャの読み込み ***/
-				hr = D3DXCreateTextureFromFile(pDevice,
-					g_aTextureFileName[nCntTexture],
-					&g_apTextureModel[modeSet][nCntTexture]);
-
-				if (FAILED(hr))
-				{ // テクスチャの読み込み失敗時
-					GenerateMessageBox(MB_ICONERROR,
-						"Error (1)",
-						"%d番目のテクスチャの読み込みに失敗しました。",
-						nCntTexture);
-				}
-
-				nCntTexture++;
-			}
-
-		}
-	}
+	return S_OK;
 }
 
 //================================================================================================================
@@ -314,76 +155,43 @@ HRESULT InitScript(_In_ const char* pScriptFileName)
 	/** スクリプト読み込み関連 **/
 	FILE *pFile = NULL;				// ファイルポインタ
 	HRESULT hr = E_FAIL;			// ファイルの読み込み確認処理
-	char aStr[MAX_PATH * 5] = {};		// Xファイルのファイル名
-	char aTexturePath[MAX_PATH * 2] = {};		// テクスチャパス
+	char aStr[MAX_PATH] = {};		// Xファイルのファイル名
+	char aTexturePath[MAX_PATH] = {};		// テクスチャパス
 	char *PosTrash;					// ゴミ捨て場(コメント消去用変数)
 	char *pStart;					// 値の開始位置
 	const char *pNull = "\0";		// 何もなし
-	char aErrorText[MAX_PATH * 2] = {};	// エラー文用
+	char aErrorText[MAX_PATH] = {};	// エラー文用
 	MODE mode = GetModeNext();
 
 	/** 設置前パス読み込み関連 **/
 	int nCntTexture = 0;			// 読み込んだテクスチャ数
 	int nCntModel = 0;				// 現在のモデル数
-
-	/** 設置共通関連 **/
-	INT_VECTOR3 nPos = INT_VECTOR3_NULL;		// float変換前の位置
-	D3DXVECTOR3 pos = D3DXVECTOR3_NULL;			// Xファイルの位置
-	INT_VECTOR3 nDegree = INT_VECTOR3_NULL;		// float変換前の角度
-	D3DXVECTOR3 degree = D3DXVECTOR3_NULL;		// 変換前の角度
-	D3DXVECTOR3 rot = D3DXVECTOR3_NULL;			// Xファイルの変換後角度
-	int nTexType = 0;							// テクスチャの種類
-
-	/** カメラ関連 **/
-	INT_VECTOR3 nPosV = INT_VECTOR3_NULL;		// 変換前カメラ位置
-	D3DXVECTOR3 posV = D3DXVECTOR3_NULL;		// カメラ位置
-	INT_VECTOR3 nPosR = INT_VECTOR3_NULL;		// 変換前注視点位置
-	D3DXVECTOR3 posR = D3DXVECTOR3_NULL;		// 注視点位置
-	int nZlen = 0;			// 変換前注視点距離
-	float fZlen = 0.0f;		// 注視点距離
-	int nAngle = 0;			// 変換前視野角
-	float vAngle = 0.0f;	// 視野角
-	int nZn = 0;			// 変換前描画開始距離
-	float zn = 0.0f;		// 描画開始距離
-	int nZf = 0;			// 変換前描画終了距離
-	float zf = 0.0f;		// 描画終了距離
-	float fRotSpd = 0.0f;	// 回転速度
-
-	/** モデル設置関連 **/
-	RECT stageRect = RECT_NULL;		// ステージの移動可能範囲
-	char aCodeName[MAX_PATH * 2] = {};	// コードネーム
 	int nModel = 0;					// 設置したモデル数
-	int nIndexModel = 0;			// 読み込んだモデルのインデックス
-	int nTypeModel = 1;				// 読み込んだモデルのタイプ
-	float fSpd = 0.0f;				// 速度
-	int nUseCollision = 0;			// 当たり判定の有無
-	bool bUseCollision = false;		// 当たり判定の有無
 
-	/** 壁、床設置関連 **/
 	int nField = 0;							// 床の数
 	int nWall = 0;							// 壁の数
-	INT_VECTOR3 nSize = INT_VECTOR3_NULL;	// 変換前サイズ
-	D3DXVECTOR3 size = D3DXVECTOR3_NULL;	// 大きさ
-	INT_VECTOR2 nBlock = INT_VECTOR2_NULL;	// 変換前分割数
-	D3DXVECTOR2 block = D3DXVECTOR2_NULL;	// 分割数
-	D3DXVECTOR3 move = D3DXVECTOR3_NULL;	// 移動量
-	//INT_VECTOR3 nCol = D3DCOLOR_NULL;			// 変換前色
-	D3DXCOLOR col = D3DXCOLOR_NULL;			// 色
-	D3DCULL cullType = D3DCULL_CCW;			// カリングタイプ
 
 	/** 木(ビルボード)設置関連 **/
 	int nTree = 0;				// 木の数
-	int nTexAnimCnt = 0;		// テクスチャアニメーション数
-	int nZFunc = 0;				// Zテストを使うか(1以上 => TRUE)
-	bool bZFunc = false;		// Zテストを使うか
 
 	/*** 読み込んだモデル数のリセット ***/
 	g_nModelNum = 0;
 	g_nTextureNum = 0;
 
-	ZeroMemory(&g_apTextureModel[0], sizeof(g_apTextureModel));
-	ZeroMemory(&g_aTextureFileName[0], sizeof(g_aTextureFileName));
-	ZeroMemory(&g_aXFileName[0], sizeof(g_aXFileName));
+	for (int nCntTexture = 0; nCntTexture < MAX_TEXTURE; nCntTexture++)
+	{
+		ZeroMemory(&g_apTextureModel[nCntTexture], sizeof(LPDIRECT3DTEXTURE9));
+	}
+
+	for (int nCntTextureName = 0; nCntTextureName < MAX_TEXTURE; nCntTextureName++)
+	{
+		ZeroMemory(&g_aTextureFileName[nCntTexture], sizeof g_aTextureFileName[nCntTexture]);
+	}
+	
+	for (int nCntXModelName = 0; nCntXModelName < MAX_MODEL; nCntXModelName++)
+	{
+		ZeroMemory(&g_aXFileName[nCntXModelName], sizeof g_aXFileName[nCntXModelName]);
+	}
 
 	/*** ファイルオープン ***/
 	pFile = fopen(pScriptFileName, "r");
@@ -396,36 +204,11 @@ HRESULT InitScript(_In_ const char* pScriptFileName)
 	/*** SCRIPT確認 ***/
 	while (1)
 	{
-		memset(aStr, NULL, sizeof(aStr));					// 文字列を初期化
-		(void)fgets(aStr, sizeof(aStr), pFile);				// メモ帳から一列取得
+		memset(aStr, NULL, sizeof aStr);					// 文字列を初期化
+		(void)fgets(aStr, sizeof aStr, pFile);				// メモ帳から一列取得
 		/*** コメント消去処理 ***/
-		if (strncmp(aStr, "#", 1) != 0 && strncmp(aStr, "\n", 1) != 0)
+		if (DeleteComments(&aStr[0]))
 		{ // 取得後、最初の文字が#(コメントアウト宣言)だった場合、読み込まない
-			PosTrash = strstr(aStr, "\n");					// 改行がないか確認
-			if (PosTrash != NULL) strcpy(PosTrash, "");		// あれば消去
-
-			PosTrash = strstr(aStr, "#");					// 列の途中に#がないか確認
-			if (PosTrash != NULL) strcpy(PosTrash, "");		// あれば、それ以降の文字列を消去
-
-			PosTrash = strstr(aStr, "\t");					// タブスペースがないか確認
-			while (PosTrash != NULL)
-			{
-				if (PosTrash != NULL)
-				{
-					if (PosTrash[0] == aStr[0])
-					{
-						strcpy(aStr, &aStr[1]);
-						PosTrash = &PosTrash[1];				// あれば消去
-					}
-					else
-					{
-						strncpy(PosTrash, "", sizeof(char));	// あれば消去
-					}
-				}
-
-				PosTrash = strstr(aStr, "\t");					// タブスペースがないか確認
-			}
-
 			if (strcmp(aStr, "SCRIPT") == NULL)
 			{ // SCRIPT発見時読み込み開始
 				break;
@@ -445,38 +228,13 @@ HRESULT InitScript(_In_ const char* pScriptFileName)
 	/*** 読み込みループ処理 ***/
 	while (1)
 	{
-		memset(aStr, NULL, sizeof(char) * (MAX_PATH * 5));					// 文字列を初期化
-		(void)fgets(aStr, sizeof(char) * (MAX_PATH * 5), pFile);				// メモ帳から一列取得
+		memset(aStr, NULL, sizeof aStr);					// 文字列を初期化
+		(void)fgets(aStr, sizeof aStr, pFile);				// メモ帳から一列取得
 
 		if (feof(pFile) != 0) break;						// もし取得後EOFの場合、読み込み終了
 		/*** コメント消去処理 ***/
-		if (strncmp(aStr, "#", 1) != 0 && strncmp(aStr, "\n", 1) != 0)
+		if (DeleteComments(&aStr[0]))
 		{ // 取得後、最初の文字が#(コメントアウト宣言)だった場合、読み込まない
-			PosTrash = strstr(aStr, "\n");					// 改行がないか確認
-			if (PosTrash != NULL) strcpy(PosTrash, "");		// あれば消去
-
-			PosTrash = strstr(aStr, "#");					// 列の途中に#がないか確認
-			if (PosTrash != NULL) strcpy(PosTrash, "");		// あれば、それ以降の文字列を消去
-
-			PosTrash = strstr(aStr, "\t");					// タブスペースがないか確認
-			while (PosTrash != NULL)
-			{
-				if (PosTrash != NULL)
-				{
-					if (PosTrash[0] == aStr[0])
-					{
-						strcpy(aStr, &aStr[1]);
-						PosTrash = &PosTrash[1];				// あれば消去
-					}
-					else
-					{
-						strncpy(PosTrash, "", sizeof(char));	// あれば消去
-					}
-				}
-
-				PosTrash = strstr(aStr, "\t");					// タブスペースがないか確認
-			}
-
 			/*** END_SCRIPTか確認 ***/
 			if (strstr(aStr, READ_TEXTURENUM) != NULL)
 			{ // 読み込むテクスチャ数を取得
@@ -491,7 +249,7 @@ HRESULT InitScript(_In_ const char* pScriptFileName)
 			}
 			else if (strstr(aStr, READ_TEXTUREPATH) != NULL && nCntTexture < g_nTextureNum)
 			{ // テクスチャパスの読み取り及びテクスチャロード (読み込む数分のみ)
-				memset(g_aTextureFileName[nCntTexture], NULL, sizeof(char) * 260);		// 文字列を初期化
+				memset(&g_aTextureFileName[nCntTexture], NULL, sizeof g_aTextureFileName[nCntTexture]);		// 文字列を初期化
 
 				pStart = strchr(aStr, '=');
 
@@ -503,7 +261,7 @@ HRESULT InitScript(_In_ const char* pScriptFileName)
 				/*** テクスチャの読み込み ***/
 				hr = D3DXCreateTextureFromFile(pDevice,
 					g_aTextureFileName[nCntTexture],
-					&g_apTextureModel[mode][nCntTexture]);
+					&g_apTextureModel[nCntTexture]);
 
 				if (FAILED(hr))
 				{ // テクスチャの読み込み失敗時
@@ -528,13 +286,14 @@ HRESULT InitScript(_In_ const char* pScriptFileName)
 			}
 			else if (strstr(aStr, READ_MODELPATH) != NULL && nCntModel < g_nModelNum)
 			{ // モデルパスの読み込み
-				memset(g_aXFileName[nCntModel], NULL, sizeof(char) * 260);		// 文字列を初期化
+				memset(g_aXFileName[nCntModel], NULL, sizeof g_aXFileName[nCntModel]);		// 文字列を初期化
 				pStart = strchr(aStr, '=');
 
 				/** モデルパスの読み込み **/
 				(void)sscanf(pStart + 1, "%s", &g_aXFileName[nCntModel]);
 				hr = LoadObject(g_aXFileName[nCntModel]);
 
+				// 読み込み失敗時
 				if (FAILED(hr))
 				{ // モデルの読み込みに失敗
 					GenerateMessageBox(MB_ICONERROR,
@@ -547,10 +306,26 @@ HRESULT InitScript(_In_ const char* pScriptFileName)
 			}
 			else if (strcmp(aStr, READ_CAMERASET) == NULL)
 			{ // カメラの設置
+				/** カメラ関連 **/
+				INT_VECTOR3 nPosV = INT_VECTOR3_NULL;		// 変換前カメラ位置
+				D3DXVECTOR3 posV = D3DXVECTOR3_NULL;		// カメラ位置
+				INT_VECTOR3 nPosR = INT_VECTOR3_NULL;		// 変換前注視点位置
+				D3DXVECTOR3 posR = D3DXVECTOR3_NULL;		// 注視点位置
+				int nZlen = 0;			// 変換前注視点距離
+				float fZlen = 0.0f;		// 注視点距離
+				int nAngle = 0;			// 変換前視野角
+				float vAngle = 0.0f;	// 視野角
+				int nZn = 0;			// 変換前描画開始距離
+				float zn = 0.0f;		// 描画開始距離
+				int nZf = 0;			// 変換前描画終了距離
+				float zf = 0.0f;		// 描画終了距離
+				float fRotSpd = 0.0f;	// 回転速度
+				float fSpd = 0.0f;		// 速度
+
 				while (1)
 				{
-					memset(aStr, NULL, sizeof(char) * (MAX_PATH * 5));
-					(void)fgets(aStr, sizeof(char) * (MAX_PATH * 5), pFile);				// メモ帳から一列取得
+					memset(aStr, NULL, sizeof aStr);					// 文字列を初期化
+					(void)fgets(aStr, sizeof aStr, pFile);				// メモ帳から一列取得
 					/*** コメント消去処理 ***/
 					if (DeleteComments(&aStr[0]))
 					{ // 取得後、最初の文字が#(コメントアウト宣言)だった場合、読み込まない
@@ -625,18 +400,6 @@ HRESULT InitScript(_In_ const char* pScriptFileName)
 							/** カメラの設置 **/
 							SetCamera(posV, posR, vAngle, zn, zf, fZlen, fSpd, fRotSpd);
 
-							/*** 変数の初期化 ***/
-							posV = D3DXVECTOR3_NULL;
-							nPosV = INT_VECTOR3_NULL;
-							posR = D3DXVECTOR3_NULL;
-							nPosR = INT_VECTOR3_NULL;
-							vAngle = 0.0f;
-							zn = 0.0f;
-							zf = 0.0f;
-							fZlen = 0.0f;
-							fSpd = 0.0f;
-							fRotSpd = 0.0f;
-
 							break;
 						}
 					}
@@ -644,13 +407,13 @@ HRESULT InitScript(_In_ const char* pScriptFileName)
 			}
 			else if (strcmp(aStr, READ_ORNAMENTSET) == NULL)
 			{
-				int nNumOrnament = -1;
-				int nCntOrnament = 0;
+				int nNumOrnament = -1;		// 読み込むオーナメント数をリセット
+				int nCntOrnament = 0;		// 読み込んだオーナメント数をリセット
 				
 				while (1)
 				{
-					memset(aStr, NULL, sizeof(aStr));					// 文字列を初期化
-					(void)fgets(aStr, sizeof(aStr), pFile);				// メモ帳から一列取得
+					memset(aStr, NULL, sizeof aStr);					// 文字列を初期化
+					(void)fgets(aStr, sizeof aStr, pFile);				// メモ帳から一列取得
 					/*** コメント消去処理 ***/
 					if (DeleteComments(&aStr[0]))
 					{
@@ -670,8 +433,8 @@ HRESULT InitScript(_In_ const char* pScriptFileName)
 
 							while (1)
 							{
-								memset(aStr, NULL, sizeof(aStr));					// 文字列を初期化
-								(void)fgets(aStr, sizeof(aStr), pFile);				// メモ帳から一列取得
+								memset(aStr, NULL, sizeof aStr);					// 文字列を初期化
+								(void)fgets(aStr, sizeof aStr, pFile);				// メモ帳から一列取得
 								/*** コメント消去処理 ***/
 								if (DeleteComments(&aStr[0]))
 								{
@@ -705,6 +468,7 @@ HRESULT InitScript(_In_ const char* pScriptFileName)
 									}
 									else if (strstr(aStr, READ_ENDORNAMENT) != NULL)
 									{
+										// オーナメント情報の登録
 										SettingOrnamentInfo(nOrnament, nType, fRadius, fWeight);
 										nCntOrnament++;
 										break;
@@ -721,10 +485,24 @@ HRESULT InitScript(_In_ const char* pScriptFileName)
 			}
 			else if (strcmp(aStr, READ_MODELSET) == NULL && nModel < MAX_MODEL)
 			{ // Xファイルのモデル設置
+				/** 設置共通関連 **/
+				INT_VECTOR3 nPos = INT_VECTOR3_NULL;		// float変換前の位置
+				D3DXVECTOR3 pos = D3DXVECTOR3_NULL;			// Xファイルの位置
+				INT_VECTOR3 nDegree = INT_VECTOR3_NULL;		// float変換前の角度
+				D3DXVECTOR3 degree = D3DXVECTOR3_NULL;		// 変換前の角度
+				D3DXVECTOR3 rot = D3DXVECTOR3_NULL;			// Xファイルの変換後角度
+
+				/** モデル設置関連 **/
+				int nIndexModel = 0;			// 読み込んだモデルのインデックス
+				int nTypeModel = 1;				// 読み込んだモデルのタイプ
+				float fSpd = 0.0f;				// 速度
+				int nUseCollision = 0;			// 当たり判定の有無
+				bool bUseCollision = false;		// 当たり判定の有無
+
 				while (1)
 				{
-					memset(aStr, NULL, sizeof(aStr));					// 文字列を初期化
-					(void)fgets(aStr, sizeof(aStr), pFile);				// メモ帳から一列取得
+					memset(aStr, NULL, sizeof aStr);					// 文字列を初期化
+					(void)fgets(aStr, sizeof aStr, pFile);				// メモ帳から一列取得
 					/*** コメント消去処理 ***/
 					if (DeleteComments(&aStr[0]))
 					{ 
@@ -763,20 +541,6 @@ HRESULT InitScript(_In_ const char* pScriptFileName)
 							/** モデルの移動速度の読み込み **/
 							(void)sscanf(pStart + 1, "%f", &fSpd);
 						}
-						else if (strstr(aStr, READ_STAGERECT) != NULL)
-						{ // モデルのステージ移動可能範囲
-							pStart = strchr(aStr, '=');
-
-							/** モデルのステージ移動可能範囲の読み込み **/
-							(void)sscanf(pStart + 1, "%d %d %d %d", &stageRect.left, &stageRect.top, &stageRect.right, &stageRect.bottom);
-						}
-						else if (strstr(aStr, READ_CODETEXT) != NULL)
-						{ // モデルのステージ移動可能範囲
-							pStart = strchr(aStr, '=');
-
-							/** モデルのステージ移動可能範囲の読み込み **/
-							(void)sscanf(pStart + 1, "%s", &aCodeName[0]);
-						}
 						else if (strstr(aStr, READ_COLLISION) != NULL)
 						{ // カメラの注視点の位置
 							pStart = strchr(aStr, '=');
@@ -811,14 +575,6 @@ HRESULT InitScript(_In_ const char* pScriptFileName)
 
 									break;
 
-								// 敵の場合
-								case ENEMYTYPE:
-
-									/** 敵の設置 **/
-									SetEnemy(pos, rot, nIndexModel, fSpd);
-
-									break;
-
 								// オブジェクトの場合
 								case OBJECTTYPE:
 
@@ -826,14 +582,6 @@ HRESULT InitScript(_In_ const char* pScriptFileName)
 									SetObject(pos, rot, nIndexModel, (COLLISIONTYPE)nUseCollision);
 
 									break;
-								}
-
-								if (FAILED(hr))
-								{ // モデルの読み込みに失敗
-									GenerateMessageBox(MB_ICONERROR,
-										"Error (2)",
-										"%d番目のモデルの読み込みに失敗しました。",
-										nModel);
 								}
 							}
 							else
@@ -845,20 +593,6 @@ HRESULT InitScript(_In_ const char* pScriptFileName)
 									nModel);
 							}
 
-							/*** 変数の初期化 ***/
-							pos = D3DXVECTOR3_NULL;
-							nPos = INT_VECTOR3_NULL;
-							rot = D3DXVECTOR3_NULL;
-							nDegree = INT_VECTOR3_NULL;
-							degree = D3DXVECTOR3_NULL;
-							stageRect = RECT_NULL;
-							memset(aCodeName, NULL, sizeof(char) * MAX_PATH);
-							fSpd = 0.0f;
-							nTypeModel = 1;
-							nIndexModel = 0;
-							nUseCollision = 1;
-							bUseCollision = true;
-
 							/*** 設置したモデル数を増加 ***/
 							nModel++;
 
@@ -868,11 +602,21 @@ HRESULT InitScript(_In_ const char* pScriptFileName)
 				}
 			}
 			else if (strcmp(aStr, READ_XMASTREESET) == NULL && nModel < MAX_MODEL)
-			{ // Xファイルのモデル設置
+			{ // XMASTREEの設置
+				/** 設置共通関連 **/
+				INT_VECTOR3 nPos = INT_VECTOR3_NULL;		// float変換前の位置
+				D3DXVECTOR3 pos = D3DXVECTOR3_NULL;			// Xファイルの位置
+				INT_VECTOR3 nDegree = INT_VECTOR3_NULL;		// float変換前の角度
+				D3DXVECTOR3 degree = D3DXVECTOR3_NULL;		// 変換前の角度
+				D3DXVECTOR3 rot = D3DXVECTOR3_NULL;			// Xファイルの変換後角度
+
+				/** モデル設置関連 **/
+				int nIndexModel = 0;			// 読み込んだモデルのインデックス
+
 				while (1)
 				{
-					memset(aStr, NULL, sizeof(aStr));					// 文字列を初期化
-					(void)fgets(aStr, sizeof(aStr), pFile);				// メモ帳から一列取得
+					memset(aStr, NULL, sizeof aStr);					// 文字列を初期化
+					(void)fgets(aStr, sizeof aStr, pFile);				// メモ帳から一列取得
 					/*** コメント消去処理 ***/
 					if (DeleteComments(&aStr[0]))
 					{
@@ -910,14 +654,6 @@ HRESULT InitScript(_In_ const char* pScriptFileName)
 
 								/*** 設置 ***/
 								SetXmasTree(pos, rot, nIndexModel);
-
-								if (FAILED(hr))
-								{ // モデルの読み込みに失敗
-									GenerateMessageBox(MB_ICONERROR,
-										"Error (2)",
-										"%d番目のモデルの読み込みに失敗しました。",
-										nModel);
-								}
 							}
 							else
 							{ // インデックス範囲外
@@ -927,20 +663,6 @@ HRESULT InitScript(_In_ const char* pScriptFileName)
 									"%d番目のモデルのインデックス設定に失敗しました。",
 									nModel);
 							}
-
-							/*** 変数の初期化 ***/
-							pos = D3DXVECTOR3_NULL;
-							nPos = INT_VECTOR3_NULL;
-							rot = D3DXVECTOR3_NULL;
-							nDegree = INT_VECTOR3_NULL;
-							degree = D3DXVECTOR3_NULL;
-							stageRect = RECT_NULL;
-							memset(aCodeName, NULL, sizeof(char) * MAX_PATH);
-							fSpd = 0.0f;
-							nTypeModel = 1;
-							nIndexModel = 0;
-							nUseCollision = 1;
-							bUseCollision = true;
 
 							/*** 設置したモデル数を増加 ***/
 							nModel++;
@@ -952,10 +674,27 @@ HRESULT InitScript(_In_ const char* pScriptFileName)
 			}
 			else if (strcmp(aStr, READ_FIELDSET) == NULL)
 			{ // 床情報
+				/** 設置共通関連 **/
+				INT_VECTOR3 nPos = INT_VECTOR3_NULL;		// float変換前の位置
+				D3DXVECTOR3 pos = D3DXVECTOR3_NULL;			// Xファイルの位置
+				INT_VECTOR3 nDegree = INT_VECTOR3_NULL;		// float変換前の角度
+				D3DXVECTOR3 degree = D3DXVECTOR3_NULL;		// 変換前の角度
+				D3DXVECTOR3 rot = D3DXVECTOR3_NULL;			// Xファイルの変換後角度
+
+				/** 壁、床設置関連 **/
+				INT_VECTOR3 nSize = INT_VECTOR3_NULL;	// 変換前サイズ
+				D3DXVECTOR3 size = D3DXVECTOR3_NULL;	// 大きさ
+				INT_VECTOR2 nBlock = INT_VECTOR2_NULL;	// 変換前分割数
+				D3DXVECTOR2 block = D3DXVECTOR2_NULL;	// 分割数
+				D3DXVECTOR3 move = D3DXVECTOR3_NULL;	// 移動量
+				D3DXCOLOR col = D3DXCOLOR_NULL;			// 色
+				D3DCULL cullType = D3DCULL_CCW;			// カリングタイプ
+				int nTexType = 0;				// テクスチャの種類
+
 				while (1)
 				{
-					memset(aStr, NULL, sizeof(aStr));					// 文字列を初期化
-					(void)fgets(aStr, sizeof(aStr), pFile);				// メモ帳から一列取得
+					memset(aStr, NULL, sizeof aStr);					// 文字列を初期化
+					(void)fgets(aStr, sizeof aStr, pFile);				// メモ帳から一列取得
 					/*** コメント消去処理 ***/
 					if (DeleteComments(&aStr[0]))
 					{ // 取得後、最初の文字が#(コメントアウト宣言)だった場合、読み込まない
@@ -1041,20 +780,6 @@ HRESULT InitScript(_In_ const char* pScriptFileName)
 									nField);
 							}
 
-							/*** 変数の初期化 ***/
-							nTexType = 0;
-							pos = D3DXVECTOR3_NULL;
-							nPos = INT_VECTOR3_NULL;
-							rot = D3DXVECTOR3_NULL;
-							nDegree = INT_VECTOR3_NULL;
-							degree = D3DXVECTOR3_NULL;
-							nBlock = INT_VECTOR2_NULL;
-							block = D3DXVECTOR2_NULL;
-							nSize = INT_VECTOR3_NULL;
-							size = D3DXVECTOR3_NULL;
-							move = D3DXVECTOR3_NULL;
-							cullType = D3DCULL_CCW;
-
 							nField++;
 
 							break;
@@ -1064,10 +789,26 @@ HRESULT InitScript(_In_ const char* pScriptFileName)
 			}
 			else if (strcmp(aStr, READ_MESHFIELDSET) == NULL)
 			{ // 床情報
+				/** 設置共通関連 **/
+				INT_VECTOR3 nPos = INT_VECTOR3_NULL;		// float変換前の位置
+				D3DXVECTOR3 pos = D3DXVECTOR3_NULL;			// Xファイルの位置
+				INT_VECTOR3 nDegree = INT_VECTOR3_NULL;		// float変換前の角度
+				D3DXVECTOR3 degree = D3DXVECTOR3_NULL;		// 変換前の角度
+				D3DXVECTOR3 rot = D3DXVECTOR3_NULL;			// Xファイルの変換後角度
+
+				/** 壁、床設置関連 **/
+				INT_VECTOR3 nSize = INT_VECTOR3_NULL;	// 変換前サイズ
+				D3DXVECTOR3 size = D3DXVECTOR3_NULL;	// 大きさ
+				INT_VECTOR2 nBlock = INT_VECTOR2_NULL;	// 変換前分割数
+				D3DXVECTOR2 block = D3DXVECTOR2_NULL;	// 分割数
+				D3DXCOLOR col = D3DXCOLOR_NULL;			// 色
+				D3DCULL cullType = D3DCULL_CCW;			// カリングタイプ
+				int nTexType = 0;				// テクスチャの種類
+
 				while (1)
 				{
-					memset(aStr, NULL, sizeof(aStr));					// 文字列を初期化
-					(void)fgets(aStr, sizeof(aStr), pFile);				// メモ帳から一列取得
+					memset(aStr, NULL, sizeof aStr);					// 文字列を初期化
+					(void)fgets(aStr, sizeof aStr, pFile);				// メモ帳から一列取得
 					/*** コメント消去処理 ***/
 					if (DeleteComments(&aStr[0]))
 					{ // 取得後、最初の文字が#(コメントアウト宣言)だった場合、読み込まない
@@ -1084,13 +825,6 @@ HRESULT InitScript(_In_ const char* pScriptFileName)
 
 							/** 床の移動量の読み込み **/
 							(void)sscanf(pStart + 1, "%d %d %d", &nPos.x, &nPos.y, &nPos.z);
-						}
-						else if (strstr(aStr, READ_MOVE) != NULL)
-						{ // 床の移動量
-							pStart = strchr(aStr, '=');
-
-							/** 床の移動量の読み込み **/
-							(void)sscanf(pStart + 1, "%f %f", &move.x, &move.z);
 						}
 						else if (strstr(aStr, READ_SIZE) != NULL)
 						{ // 床のサイズ
@@ -1153,20 +887,6 @@ HRESULT InitScript(_In_ const char* pScriptFileName)
 									nField);
 							}
 
-							/*** 変数の初期化 ***/
-							nTexType = 0;
-							pos = D3DXVECTOR3_NULL;
-							nPos = INT_VECTOR3_NULL;
-							rot = D3DXVECTOR3_NULL;
-							nDegree = INT_VECTOR3_NULL;
-							degree = D3DXVECTOR3_NULL;
-							nBlock = INT_VECTOR2_NULL;
-							block = D3DXVECTOR2_NULL;
-							nSize = INT_VECTOR3_NULL;
-							size = D3DXVECTOR3_NULL;
-							move = D3DXVECTOR3_NULL;
-							cullType = D3DCULL_CCW;
-
 							break;
 						}
 					}
@@ -1174,10 +894,26 @@ HRESULT InitScript(_In_ const char* pScriptFileName)
 			}
 			else if (strcmp(aStr, READ_WALLSET) == NULL)
 			{ // 壁情報
+				/** 設置共通関連 **/
+				INT_VECTOR3 nPos = INT_VECTOR3_NULL;		// float変換前の位置
+				D3DXVECTOR3 pos = D3DXVECTOR3_NULL;			// Xファイルの位置
+				INT_VECTOR3 nDegree = INT_VECTOR3_NULL;		// float変換前の角度
+				D3DXVECTOR3 degree = D3DXVECTOR3_NULL;		// 変換前の角度
+				D3DXVECTOR3 rot = D3DXVECTOR3_NULL;			// Xファイルの変換後角度
+
+				/** 壁、床設置関連 **/
+				INT_VECTOR3 nSize = INT_VECTOR3_NULL;	// 変換前サイズ
+				D3DXVECTOR3 size = D3DXVECTOR3_NULL;	// 大きさ
+				INT_VECTOR2 nBlock = INT_VECTOR2_NULL;	// 変換前分割数
+				D3DXVECTOR2 block = D3DXVECTOR2_NULL;	// 分割数
+				D3DXCOLOR col = D3DXCOLOR_NULL;			// 色
+				D3DCULL cullType = D3DCULL_CCW;			// カリングタイプ
+				int nTexType = 0;				// テクスチャの種類
+
 				while (1)
 				{
-					memset(aStr, NULL, sizeof(aStr));					// 文字列を初期化
-					(void)fgets(aStr, sizeof(aStr), pFile);				// メモ帳から一列取得
+					memset(aStr, NULL, sizeof aStr);					// 文字列を初期化
+					(void)fgets(aStr, sizeof aStr, pFile);				// メモ帳から一列取得
 					/*** コメント消去処理 ***/
 					if (DeleteComments(&aStr[0]))
 					{ // 取得後、最初の文字が#(コメントアウト宣言)だった場合、読み込まない
@@ -1256,20 +992,6 @@ HRESULT InitScript(_In_ const char* pScriptFileName)
 									nWall);
 							}
 
-							/*** 変数の初期化 ***/
-							nTexType = 0;
-							pos = D3DXVECTOR3_NULL;
-							nPos = INT_VECTOR3_NULL;
-							rot = D3DXVECTOR3_NULL;
-							nDegree = INT_VECTOR3_NULL;
-							degree = D3DXVECTOR3_NULL;
-							nBlock = INT_VECTOR2_NULL;
-							block = D3DXVECTOR2_NULL;
-							nSize = INT_VECTOR3_NULL;
-							size = D3DXVECTOR3_NULL;
-							col = D3DXCOLOR_NULL;
-							cullType = D3DCULL_CCW;
-
 							nWall++;
 
 							break;
@@ -1279,10 +1001,29 @@ HRESULT InitScript(_In_ const char* pScriptFileName)
 			}
 			else if (strcmp(aStr, READ_TREESET) == NULL)
 			{ // 木情報
+				/** 設置共通関連 **/
+				INT_VECTOR3 nPos = INT_VECTOR3_NULL;		// float変換前の位置
+				D3DXVECTOR3 pos = D3DXVECTOR3_NULL;			// Xファイルの位置
+				INT_VECTOR3 nDegree = INT_VECTOR3_NULL;		// float変換前の角度
+				D3DXVECTOR3 degree = D3DXVECTOR3_NULL;		// 変換前の角度
+				D3DXVECTOR3 rot = D3DXVECTOR3_NULL;			// Xファイルの変換後角度
+
+				/** 壁、床設置関連 **/
+				INT_VECTOR3 nSize = INT_VECTOR3_NULL;	// 変換前サイズ
+				D3DXVECTOR3 size = D3DXVECTOR3_NULL;	// 大きさ
+				INT_VECTOR2 nBlock = INT_VECTOR2_NULL;	// 変換前分割数
+				D3DXVECTOR2 block = D3DXVECTOR2_NULL;	// 分割数
+				D3DXCOLOR col = D3DXCOLOR_NULL;			// 色
+
+				int nTexAnimCnt = 0;		// テクスチャアニメーション数
+				int nZFunc = 0;				// Zテストを使うか(1以上 => TRUE)
+				bool bZFunc = false;		// Zテストを使うか
+				int nTexType = 0;				// テクスチャの種類
+
 				while (1)
 				{
-					memset(aStr, NULL, sizeof(aStr));					// 文字列を初期化
-					(void)fgets(aStr, sizeof(aStr), pFile);				// メモ帳から一列取得
+					memset(aStr, NULL, sizeof aStr);					// 文字列を初期化
+					(void)fgets(aStr, sizeof aStr, pFile);				// メモ帳から一列取得
 					/*** コメント消去処理 ***/
 					if (DeleteComments(&aStr[0]))
 					{ // 取得後、最初の文字が#(コメントアウト宣言)だった場合、読み込まない
@@ -1358,10 +1099,12 @@ HRESULT InitScript(_In_ const char* pScriptFileName)
 			}
 			else if (strstr(aStr, READ_EFFECTSET) != NULL)
 			{ // エフェクト情報
+				int nTexType = 0;				// テクスチャの種類
+
 				while (1)
 				{
-					memset(aStr, NULL, sizeof(aStr));					// 文字列を初期化
-					(void)fgets(aStr, sizeof(aStr), pFile);				// メモ帳から一列取得
+					memset(aStr, NULL, sizeof aStr);					// 文字列を初期化
+					(void)fgets(aStr, sizeof aStr, pFile);				// メモ帳から一列取得
 					/*** コメント消去処理 ***/
 					if (DeleteComments(&aStr[0]))
 					{ // 取得後、最初の文字が#(コメントアウト宣言)だった場合、読み込まない
@@ -1399,6 +1142,8 @@ HRESULT InitScript(_In_ const char* pScriptFileName)
 			}
 			else if (strstr(aStr, READ_SHADOWSET) != NULL)
 			{ // 影情報
+				int nTexType = 0;				// テクスチャの種類
+
 				while (1)
 				{
 					memset(aStr, NULL, sizeof(aStr));					// 文字列を初期化
@@ -1440,6 +1185,8 @@ HRESULT InitScript(_In_ const char* pScriptFileName)
 			}
 			else if (strstr(aStr, READ_BULLETSET) != NULL)
 			{ // 弾情報
+				int nTexType = 0;				// テクスチャの種類
+
 				while (1)
 				{
 					memset(aStr, NULL, sizeof(aStr));					// 文字列を初期化
@@ -1481,6 +1228,9 @@ HRESULT InitScript(_In_ const char* pScriptFileName)
 			}
 			else if (strstr(aStr, READ_EXPLOSIONSET) != NULL)
 			{ // 爆発情報
+				int nTexType = 0;				// テクスチャの種類
+				int nTexAnimCnt = 0;		// テクスチャアニメーション数
+
 				while (1)
 				{
 					memset(aStr, NULL, sizeof(aStr));					// 文字列を初期化
@@ -2047,15 +1797,12 @@ bool DeleteComments(char* aStr)
 void UninitScript(void)
 {
 	/*** テクスチャの破棄 ***/
-	for (int nCntMode = 0; nCntMode < MODE_MAX; nCntMode++)
+	for (int nCntScript = 0; nCntScript < MAX_TEXTURE; nCntScript++)
 	{
-		for (int nCntScript = 0; nCntScript < MAX_TEXTURE; nCntScript++)
+		if (g_apTextureModel[nCntScript] != NULL)
 		{
-			if (g_apTextureModel[nCntMode][nCntScript] != NULL)
-			{
-				g_apTextureModel[nCntMode][nCntScript]->Release();
-				g_apTextureModel[nCntMode][nCntScript] = NULL;
-			}
+			g_apTextureModel[nCntScript]->Release();
+			g_apTextureModel[nCntScript] = NULL;
 		}
 	}
 }
@@ -2070,6 +1817,5 @@ LPDIRECT3DTEXTURE9 GetTexture(_In_ int nIndexTexture)
 		return NULL;
 	}
 
-	MODE mode = GetMode();
-	return g_apTextureModel[mode][nIndexTexture];
+	return g_apTextureModel[nIndexTexture];
 }

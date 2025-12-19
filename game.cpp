@@ -8,11 +8,11 @@
 //*** インクルードファイル ***
 //**********************************************************************************
 #include "game.h"
+#include "camera.h"
 #include "field.h"
 #include "light.h"
 #include "object.h"
 #include "player.h"
-#include "enemy.h"
 #include "loadxfile.h"
 #include "shadow.h"
 #include "wall.h"
@@ -75,8 +75,6 @@ HRESULT InitGame(void)
 
 	InitPlayer();
 
-	InitEnemy();
-
 	InitEffect();
 
 	InitExplosion();
@@ -84,8 +82,6 @@ HRESULT InitGame(void)
 	InitMeshfield();
 
 	InitMeshCylinder();
-
-	InitMeshDome();
 
 	InitMeshSphere();
 
@@ -142,8 +138,6 @@ void UninitGame(void)
 
 	UninitPlayer();
 
-	UninitEnemy();
-
 	UninitEffect();
 
 	UninitExplosion();
@@ -157,8 +151,6 @@ void UninitGame(void)
 	UninitMeshfield();
 
 	UninitMeshCylinder();
-
-	UninitMeshDome();
 
 	UninitMeshSphere();
 
@@ -269,9 +261,6 @@ void UpdateGame(void)
 		/*** オブジェクトの更新 ***/
 		UpdateObject();
 
-		/*** 敵の更新 ***/
-		UpdateEnemy();
-
 		/*** エフェクトの更新 ***/
 		UpdateEffect();
 
@@ -291,8 +280,6 @@ void UpdateGame(void)
 		UpdateMeshfield();
 
 		UpdateMeshCylinder();
-
-		UpdateMeshDome();
 
 		UpdateMeshRing();
 	}
@@ -327,9 +314,6 @@ void DrawGame(void)
 	/*** プレイヤーの描画 ***/
 	DrawPlayer();
 
-	/*** 敵の描画 ***/
-	DrawEnemy();
-
 	/*** オブジェクトの描画 ***/
 	DrawObject();
 
@@ -347,8 +331,6 @@ void DrawGame(void)
 	DrawXmasTree();
 
 	DrawMeshCylinder();
-
-	DrawMeshDome();
 
 	DrawMeshSphere();
 

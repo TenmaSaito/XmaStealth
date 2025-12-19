@@ -53,11 +53,7 @@ typedef struct
 //*************************************************************************************************
 //*** グローバル変数 ***
 //*************************************************************************************************
-LPDIRECT3DTEXTURE9		g_pTextureMeshfield = NULL;	// テクスチャへのポインタ
-LPDIRECT3DVERTEXBUFFER9 g_pVtxBuffMeshfield = NULL;	// 頂点バッファのポインタ
-LPDIRECT3DINDEXBUFFER9 g_pIdxBuffMeshField = NULL;	// インデックスバッファへのポインタ
 MeshField g_aMField[MAX_MESH];		// メッシュフィールド
-WORD g_wIdx[MAX_MESH][INDEX_BUFFER(VERTEX_BUFFER(MESH_X_NUM, MESH_Z_NUM), MESH_X_NUM, MESH_Z_NUM)] = {};
 
 //================================================================================================================
 // --- リザルト用背景の初期化処理 ---
@@ -80,13 +76,25 @@ void UninitMeshfield(void)
 	for (int nCntRelease = 0; nCntRelease < MAX_MESH; nCntRelease++, pField++)
 	{
 		/*** テクスチャの破棄 ***/
-		RELEASE(pField->pTexture);
+		if (pField->pTexture != NULL)
+		{
+			pField->pTexture->Release();
+			pField->pTexture = NULL;
+		}
 
 		/*** 頂点バッファの破棄 ***/
-		RELEASE(pField->pVtxBuff);
+		if (pField->pVtxBuff != NULL)
+		{
+			pField->pVtxBuff->Release();
+			pField->pVtxBuff = NULL;
+		}
 
 		/*** インデックスバッファの破棄 ***/
-		RELEASE(pField->pIdxBuff);
+		if (pField->pIdxBuff != NULL)
+		{
+			pField->pIdxBuff->Release();
+			pField->pIdxBuff = NULL;
+		}
 	}
 }
 
@@ -178,11 +186,13 @@ void SetMeshField(D3DXVECTOR3 pos, D3DXVECTOR3 rot, float fWidth, float fDepth, 
 
 	for (int nCntField = 0; nCntField < MAX_MESH; nCntField++, pField++)
 	{
+		// もし使われていなければ
 		if (pField->bUse == false)
 		{
 			/*** 各変数の初期化 ***/
 			ZeroMemory(&g_aMField[nCntField], sizeof(MeshField));
 
+			// 情報の適用
 			pField->pos = pos;
 			pField->rot = RepairedRot(rot);
 			pField->fWidth = fWidth;
@@ -191,7 +201,7 @@ void SetMeshField(D3DXVECTOR3 pos, D3DXVECTOR3 rot, float fWidth, float fDepth, 
 			pField->nZBlock = nZBlock;
 			pField->nIdxTexture = nIdxTexture;
 			pField->cullType = culllType;
-			pField->bUse = true;
+			pField->bUse = true;		// 使用状態に
 
 			/*** 頂点バッファの生成 ***/
 			hr = pDevice->CreateVertexBuffer(sizeof(VERTEX_3D) * VERTEX_BUFFER(nXBlock, nZBlock),
@@ -201,17 +211,17 @@ void SetMeshField(D3DXVECTOR3 pos, D3DXVECTOR3 rot, float fWidth, float fDepth, 
 				&pField->pVtxBuff,
 				NULL);
 
-			/*** 頂点バッファの設定 ***/
-			pField->pVtxBuff->Lock(0, 0, (void**)&pVtx, 0);
-
 			if (SUCCEEDED(hr))
 			{
+				/*** 頂点バッファの設定 ***/
+				pField->pVtxBuff->Lock(0, 0, (void**)&pVtx, 0);
+
 				/*** 頂点座標の設定の設定 + テクスチャ座標の設定 ***/
 				SetIndexedVertex(pVtx, pField->pos, nXBlock, nZBlock, fWidth, fDepth);
-			}
 
-			/*** 頂点バッファの設定を終了 ***/
-			pField->pVtxBuff->Unlock();
+				/*** 頂点バッファの設定を終了 ***/
+				pField->pVtxBuff->Unlock();
+			}
 
 			/*** インデックスバッファの生成 ***/
 			hr = pDevice->CreateIndexBuffer(sizeof(WORD) * INDEX_BUFFER(VERTEX_BUFFER(nXBlock, nZBlock), nXBlock, nZBlock),		// sizeof(WORD) * 必要なインデックス数
@@ -221,17 +231,17 @@ void SetMeshField(D3DXVECTOR3 pos, D3DXVECTOR3 rot, float fWidth, float fDepth, 
 				&pField->pIdxBuff,
 				NULL);
 
-			/*** インデックスバッファをロックし、頂点番号データを取得 ***/
-			pField->pIdxBuff->Lock(0, 0, (void**)&pIdx, 0);
-
 			if (SUCCEEDED(hr))
 			{
+				/*** インデックスバッファをロックし、頂点番号データを取得 ***/
+				pField->pIdxBuff->Lock(0, 0, (void**)&pIdx, 0);
+
 				/*** 頂点番号データの設定 ***/
 				SetIndex(pIdx, nXBlock, nZBlock, 0, &pField->nIdx[0]);
-			}
 
-			/*** インデックスバッファをアンロック ***/
-			pField->pIdxBuff->Unlock();
+				/*** インデックスバッファをアンロック ***/
+				pField->pIdxBuff->Unlock();
+			}
 
 			break;
 		}

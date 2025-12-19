@@ -27,7 +27,7 @@ TEXTURE_FILENAME = data/TEXTURE/gradation000.jpg	# [8]グラデーション
 #=================================================
 # 読み込むモデル数
 #================================================
-NUM_MODEL = 37
+NUM_MODEL = 34
 
 #=================================================
 # Xファイルのパス
@@ -62,9 +62,6 @@ MODEL_FILENAME = data/MODEL/Object/cafe_table.x						# [26] カフェテリア風机
 MODEL_FILENAME = data/MODEL/Object/Ornaments/Ornament_Star.x		# [27] ツリーの一番上にあるあの、あれさ。☆☆。
 MODEL_FILENAME = data/MODEL/Object/Ornaments/Ornament_cane.x		# [28] 何か飴の杖みたいなやつ
 MODEL_FILENAME = data/MODEL/Object/Ornaments/cookie.x				# [29] 美味しそうなジンジャークッキー
-MODEL_FILENAME = data/MODEL/Object/Ornaments/green_light.x			# [30] 何か光ってるやつ(緑)
-MODEL_FILENAME = data/MODEL/Object/Ornaments/red_light.x			# [31] 何か光ってるやつ(赤)
-MODEL_FILENAME = data/MODEL/Object/Ornaments/white_light.x			# [32] 何か光ってるやつ(白)
 MODEL_FILENAME = data/MODEL/Object/Ornaments/ornament_snowCrystal.x		# [33] 雪の結晶的なね。めっちゃ頑張った
 MODEL_FILENAME = data/MODEL/Object/Ornaments/ornament_snowman.x			# [34] 雪だるまつくーろー
 MODEL_FILENAME = data/MODEL/Object/Ornaments/ornament_santa's_hat.x		# [35] サンタの帽子です。はい。
@@ -75,7 +72,7 @@ MODEL_FILENAME = data/MODEL/Object/Ornaments/ornament_ring.x			# [36] この時期な
 #=================================================
 ORNAMENTSET
 
-	NUM_ORNAMENT = 12	# 設定するオーナメント数
+	NUM_ORNAMENT = 9	# 設定するオーナメント数
 
 	ORNAMENT
 		ISSTAR = 1		# スターか (0 = FALSE / 1 = TRUE / 2 = TRASH)
@@ -110,27 +107,6 @@ ORNAMENTSET
 		TYPE = 29		# モデル番号
 		RADIUS = 5.0	# 当たり判定の半径
 		WEIGHT = 6.0	# オーナメントの重量
-	END_ORNAMENT
-
-	ORNAMENT
-		ISSTAR = 0		# スターか (0 = FALSE / 1 = TRUE / 2 = TRASH)
-		TYPE = 30		# モデル番号
-		RADIUS = 2.0	# 当たり判定の半径
-		WEIGHT = 3.0	# オーナメントの重量
-	END_ORNAMENT
-
-	ORNAMENT
-		ISSTAR = 0		# スターか (0 = FALSE / 1 = TRUE / 2 = TRASH)
-		TYPE = 31		# モデル番号
-		RADIUS = 2.0	# 当たり判定の半径
-		WEIGHT = 3.0	# オーナメントの重量
-	END_ORNAMENT
-
-	ORNAMENT
-		ISSTAR = 0		# スターか (0 = FALSE / 1 = TRUE / 2 = TRASH)
-		TYPE = 32		# モデル番号
-		RADIUS = 2.0	# 当たり判定の半径
-		WEIGHT = 3.0	# オーナメントの重量
 	END_ORNAMENT
 
 	ORNAMENT

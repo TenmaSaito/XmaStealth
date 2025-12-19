@@ -251,12 +251,13 @@ void SetWall(D3DXVECTOR3 pos, D3DXVECTOR3 rot, float fWidth, float fHeight, int 
 
 	for (int nCntWall = 0; nCntWall < MAX_WALL; nCntWall++)
 	{
+		// 使われていなければ
 		if (g_aWall[nCntWall].bUse != true)
 		{
 			/*** 頂点バッファの設定 ***/
 			g_pVtxBuffWall->Lock(0, 0, (void**)&pVtx, 0);
 
-			pVtx += 4 * nCntWall;
+			pVtx += 4 * nCntWall;		// 頂点バッファをずらす
 
 			g_aWall[nCntWall].pos = pos;
 			g_aWall[nCntWall].rot = rot;
@@ -295,7 +296,7 @@ void SetWall(D3DXVECTOR3 pos, D3DXVECTOR3 rot, float fWidth, float fHeight, int 
 			pVtx[2].col = col;
 			pVtx[3].col = col;
 
-			g_aWall[nCntWall].bUse = true;
+			g_aWall[nCntWall].bUse = true;		// 使用状態に
 
 			/*** 頂点バッファの設定を終了 ***/
 			g_pVtxBuffWall->Unlock();
@@ -310,40 +311,24 @@ void SetWall(D3DXVECTOR3 pos, D3DXVECTOR3 rot, float fWidth, float fHeight, int 
 //================================================================================================================
 void CollisionWall(D3DXVECTOR3* pPos, D3DXVECTOR3* pPosOld, D3DXVECTOR3* pMove)
 {
-	D3DXVECTOR3 pos[2];
-	D3DXVECTOR3 vecMove = D3DXVECTOR3_NULL;		// 移動ベクトル
-	D3DXVECTOR3 vecLine = D3DXVECTOR3_NULL;		// 境界線ベクトル
-	D3DXVECTOR3 vecToPos = D3DXVECTOR3_NULL;	// 位置と境界線のはじめを結んだベクトル
-	D3DXVECTOR3 vecToPosOld = D3DXVECTOR3_NULL;	// 過去位置と境界線のはじめを結んだベクトル
-	D3DXVECTOR3 vecLostMove = D3DXVECTOR3_NULL;	// 壁にぶつかったことで失った、本来は壁の先にある残りのベクトル
-	D3DXVECTOR3 vecToMove = D3DXVECTOR3_NULL;	// 最終的な移動ベクトル
-	D3DXVECTOR3 rotVecLost = D3DXVECTOR3_NULL;	// 残りのベクトルの方向
-	D3DXVECTOR3 vecCutLine = D3DXVECTOR3_NULL;	// 交点からの境界線ベクトル
-	D3DXVECTOR3 vecLineNor = D3DXVECTOR3_NULL;	// 正規化した境界線ベクトル
-	D3DXVECTOR3 vecLostMoveElse = D3DXVECTOR3_NULL;	// 壁にぶつかったことで失った、本来は壁の先にある残りのベクトル
-	D3DXVECTOR3 vecNor = D3DXVECTOR3_NULL;		// 壁の逆法線ベクトル
-	D3DXVECTOR3 vecToPosNor = D3DXVECTOR3_NULL;	// 壁の逆法線ベクトルの開始位置と現在位置を結んだベクトル
-	Player *pP = GetPlayer();
-	float fVecPos = 0.0f;
-	float fVecPosOld = 0.0f;
-	float fPosToMove = 0.0f;					// vecToPosとの外積
-	float fLineToMove = 0.0f;					// vecLineとの外積
-	float fPosToResult = 0.0f;
-	float fPosOldToResult = 0.0f;
-	float fRate = 0.0f;							// 面積比率
-	float fRateMove = 0.0f;						// ベクトル比率
-	float rotMoveToWall = 0.0f;					// 移動ベクトルと壁の角度の関係
-	float fDot = 0.0f;
-	float fLengthLine = 0.0f;
-	float fLengthMove = 0.0f;					// 移動量
-	float fRateLength = 0.0f;
-	float fAngleMoveToLine = 0.0f;
-	float fVecPosToNor = 0.0f;					// 逆法線との外積
-
 	for (int nCntWall = 0; nCntWall < MAX_WALL; nCntWall++)
 	{
 		if (g_aWall[nCntWall].bUse == true && pPos->y >= g_aWall[nCntWall].pos.y && pPos->y <= g_aWall[nCntWall].pos.y + g_aWall[nCntWall].fHeight)
 		{
+			D3DXVECTOR3 pos[2];
+			D3DXVECTOR3 vecMove = D3DXVECTOR3_NULL;		// 移動ベクトル
+			D3DXVECTOR3 vecLine = D3DXVECTOR3_NULL;		// 境界線ベクトル
+			D3DXVECTOR3 vecToPos = D3DXVECTOR3_NULL;	// 位置と境界線のはじめを結んだベクトル
+			D3DXVECTOR3 vecToPosOld = D3DXVECTOR3_NULL;	// 過去位置と境界線のはじめを結んだベクトル
+			D3DXVECTOR3 vecCutLine = D3DXVECTOR3_NULL;	// 交点からの境界線ベクトル
+			D3DXVECTOR3 vecNor = D3DXVECTOR3_NULL;		// 壁の逆法線ベクトル
+			float fVecPos = 0.0f;
+			float fVecPosOld = 0.0f;
+			float fPosToMove = 0.0f;					// vecToPosとの外積
+			float fLineToMove = 0.0f;					// vecLineとの外積
+			float fRate = 0.0f;							// 面積比率
+			float fVecPosToNor = 0.0f;					// 逆法線との外積
+
 			/*** 移動ベクトルの取得 ***/
 			vecMove = *pPos - *pPosOld;
 
@@ -427,9 +412,6 @@ void CollisionWall(D3DXVECTOR3* pPos, D3DXVECTOR3* pPosOld, D3DXVECTOR3* pMove)
 				{
 					pPos->x = pos[0].x + (vecLine.x * fRate) + vecF.x;
 					pPos->z = pos[0].z + (vecLine.z * fRate) + vecF.z;
-
-					//pMove->x = pMove->x * 0.95f;
-					//pMove->z = pMove->z * 0.95f;
 				}
 			}
 		}
@@ -441,36 +423,34 @@ void CollisionWall(D3DXVECTOR3* pPos, D3DXVECTOR3* pPosOld, D3DXVECTOR3* pMove)
 //================================================================================================================
 void ReflectWall(D3DXVECTOR3 *pPos, D3DXVECTOR3 *pPosOld, D3DXVECTOR3 *pMove)
 {
-	D3DXVECTOR3 pos[2];
-	D3DXVECTOR3 vecMove = D3DXVECTOR3_NULL;		// 移動ベクトル
-	D3DXVECTOR3 vecLine = D3DXVECTOR3_NULL;		// 境界線ベクトル
-	D3DXVECTOR3 vecToPos = D3DXVECTOR3_NULL;	// 位置と境界線のはじめを結んだベクトル
-	D3DXVECTOR3 vecToPosOld = D3DXVECTOR3_NULL;	// 過去位置と境界線のはじめを結んだベクトル
-	D3DXVECTOR3 vecNor = D3DXVECTOR3_NULL;		// 境界線ベクトルと垂直な法線ベクトル
-	D3DXVECTOR3 vecDotNor = D3DXVECTOR3_NULL;	// 大きさを考慮した法線ベクトル
-	D3DXVECTOR3 vecMoveRef = D3DXVECTOR3_NULL;	// 最終的な移動ベクトル
-	D3DXVECTOR3 posIntersect = D3DXVECTOR3_NULL;// 交点の座標
-	D3DXVECTOR3 vecLostMove = D3DXVECTOR3_NULL;	// 壁にぶつかったことで失った、本来は壁の先にある残りのベクトル
-	D3DXVECTOR3 vecLostMoveRef = D3DXVECTOR3_NULL;	// 角度を直した残りのベクトル
-	D3DXVECTOR3 vecCutLine = D3DXVECTOR3_NULL;	// 交点からの境界線ベクトル
-	float fRate = 0.0f;			// 面積比率
-	float fDot = 0.0f;			// 内積の結果
-	float fVecPos = 0.0f;
-	float fVecPosOld = 0.0f;
-	float fPosToMove = 0.0f;	// vecToPosとの外積
-	float fLineToMove = 0.0f;	// vecLineとの外積
-	float fLengthVec = 0.0f;	// 境界線ベクトルの長さ
-	float fDotLost = 0.0f;
-	float fLengthLine = 0.0f;
-	float fLengthMove = 0.0f;					// 移動量
-	float fRateLength = 0.0f;
-	float fAngleMoveToLine = 0.0f;
-	float fLengthMoveRef = 0.0f;	// 反射時のベクトルの大きさ(moveから計算)
-
 	for (int nCntWall = 0; nCntWall < MAX_WALL; nCntWall++)
 	{
 		if (g_aWall[nCntWall].bUse == true)
 		{
+			D3DXVECTOR3 pos[2];
+			D3DXVECTOR3 vecMove = D3DXVECTOR3_NULL;		// 移動ベクトル
+			D3DXVECTOR3 vecLine = D3DXVECTOR3_NULL;		// 境界線ベクトル
+			D3DXVECTOR3 vecToPos = D3DXVECTOR3_NULL;	// 位置と境界線のはじめを結んだベクトル
+			D3DXVECTOR3 vecToPosOld = D3DXVECTOR3_NULL;	// 過去位置と境界線のはじめを結んだベクトル
+			D3DXVECTOR3 vecNor = D3DXVECTOR3_NULL;		// 境界線ベクトルと垂直な法線ベクトル
+			D3DXVECTOR3 vecDotNor = D3DXVECTOR3_NULL;	// 大きさを考慮した法線ベクトル
+			D3DXVECTOR3 vecMoveRef = D3DXVECTOR3_NULL;	// 最終的な移動ベクトル
+			D3DXVECTOR3 posIntersect = D3DXVECTOR3_NULL;// 交点の座標
+			D3DXVECTOR3 vecLostMove = D3DXVECTOR3_NULL;	// 壁にぶつかったことで失った、本来は壁の先にある残りのベクトル
+			D3DXVECTOR3 vecLostMoveRef = D3DXVECTOR3_NULL;	// 角度を直した残りのベクトル
+			D3DXVECTOR3 vecCutLine = D3DXVECTOR3_NULL;	// 交点からの境界線ベクトル
+			float fRate = 0.0f;			// 面積比率
+			float fDot = 0.0f;			// 内積の結果
+			float fVecPos = 0.0f;
+			float fVecPosOld = 0.0f;
+			float fPosToMove = 0.0f;	// vecToPosとの外積
+			float fLineToMove = 0.0f;	// vecLineとの外積
+			float fLengthVec = 0.0f;	// 境界線ベクトルの長さ
+			float fLengthLine = 0.0f;
+			float fLengthMove = 0.0f;					// 移動量
+			float fRateLength = 0.0f;
+			float fAngleMoveToLine = 0.0f;
+
 			/*** 移動ベクトルの取得 ***/
 			vecMove = *pPos - *pPosOld;
 
@@ -529,9 +509,6 @@ void ReflectWall(D3DXVECTOR3 *pPos, D3DXVECTOR3 *pPosOld, D3DXVECTOR3 *pMove)
 			fLengthMove = sqrtf(powf(vecLostMove.x, 2.0f) + powf(vecLostMove.z, 2.0f));
 
 			fRateLength = fLengthLine - fLengthMove;
-
-			/** 二つのベクトルの内積を求める **/
-			fDotLost = (vecLostMove.x * vecCutLine.x) + (vecLostMove.z * vecCutLine.z);
 
 			/** 二つのベクトル間の角度を求める **/
 			fAngleMoveToLine = acosf((fDot) / (fLengthLine * fLengthMove));

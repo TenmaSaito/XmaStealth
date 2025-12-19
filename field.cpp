@@ -161,6 +161,7 @@ void UpdateField(void)
 
 	for (int nCntField = 0; nCntField < MAX_FIELD; nCntField++)
 	{
+		// 使われていれば
 		if (g_aField[nCntField].bUse == true)
 		{
 			g_aField[nCntField].nCounterAnim++;
@@ -245,13 +246,15 @@ void SetField(D3DXVECTOR3 pos, D3DXVECTOR3 move, D3DXVECTOR3 rot, float fWidth, 
 
 	for (int nCntField = 0; nCntField < MAX_FIELD; nCntField++)
 	{
+		// 床構造体が使われていなければ
 		if (g_aField[nCntField].bUse != true)
 		{
 			/*** 頂点バッファの設定 ***/
 			g_pVtxBuffField->Lock(0, 0, (void**)&pVtx, 0);
 
-			pVtx += 4 * nCntField;
+			pVtx += 4 * nCntField;		// 頂点バッファをずらす
 
+			// 引数の情報を適用
 			g_aField[nCntField].pos = pos;
 			g_aField[nCntField].move = move;
 			g_aField[nCntField].rot = rot;
@@ -286,7 +289,7 @@ void SetField(D3DXVECTOR3 pos, D3DXVECTOR3 move, D3DXVECTOR3 rot, float fWidth, 
 			pVtx[2].tex = D3DXVECTOR2(0.0f, 1.0f * nZblock);
 			pVtx[3].tex = D3DXVECTOR2(1.0f * nXblock, 1.0f * nZblock);
 
-			g_aField[nCntField].bUse = true;
+			g_aField[nCntField].bUse = true;		// 使用状態に設定
 
 			/*** 頂点バッファの設定を終了 ***/
 			g_pVtxBuffField->Unlock();
@@ -305,6 +308,7 @@ bool CollisionFloor(D3DXVECTOR3 *pPos, D3DXVECTOR3 *pPosOld, D3DXVECTOR3 *pMove,
 
 	for (int nCntField = 0; nCntField < MAX_FIELD; nCntField++)
 	{
+		// 使われていれば
 		if (g_aField[nCntField].bUse == true)
 		{
 			D3DXVECTOR4 rect;

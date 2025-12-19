@@ -83,13 +83,25 @@ void UninitMeshCylinder(void)
 	for (int nCntRelease = 0; nCntRelease < MAX_MESH; nCntRelease++, pCylinder++)
 	{
 		/*** テクスチャの破棄 ***/
-		RELEASE(pCylinder->pTexture);
+		if (pCylinder->pTexture != NULL)
+		{
+			pCylinder->pTexture->Release();
+			pCylinder->pTexture = NULL;
+		}
 
 		/*** 頂点バッファの破棄 ***/
-		RELEASE(pCylinder->pVtxBuff);
+		if (pCylinder->pVtxBuff != NULL)
+		{
+			pCylinder->pVtxBuff->Release();
+			pCylinder->pVtxBuff = NULL;
+		}
 
 		/*** インデックスバッファの破棄 ***/
-		RELEASE(pCylinder->pIdxBuff);
+		if (pCylinder->pIdxBuff != NULL)
+		{
+			pCylinder->pIdxBuff->Release();
+			pCylinder->pIdxBuff = NULL;
+		}
 	}
 }
 

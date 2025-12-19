@@ -195,51 +195,57 @@ void SetXmasTree(D3DXVECTOR3 pos, D3DXVECTOR3 rot, int nType)
 	LPOBJECTINFO pObj = GetObjectInfo(nType);
 	PXMASTREE pXmas = &g_xmasTree;
 
+	// 指定されたインデックスのオブジェクト情報が安全でなければ
 	if (pObj == NULL)
-	{
+	{ // 終了
 		return;
 	}
 
-	/*** Xファイルの読み込み ***/
+	/*** クリスマスツリーの設定がまだされていなければ ***/
 	if (pXmas->bUse != true)
 	{
 		/*** 影の生成 ***/
 		pXmas->nIdShadow = SetShadow(50.0f, 50.0f);
 
-		/*** 敵の情報の適用 ***/
+		/*** クリスマスツリーの情報の適用 ***/
 		pXmas->pos = pos;
 		pXmas->rot = rot;
 		pXmas->nType = nType;
 		pXmas->fRadius = (pObj->mtxMax.x - pObj->mtxMin.x) * 0.5f;
-		ZeroMemory(&pXmas->aIdxCollision[0], sizeof(int) * MAX_COLLISION);
+		ZeroMemory(&pXmas->aIdxCollision[0], sizeof pXmas->aIdxCollision);
 		pXmas->nCntXmasTrees = 0;
 		pXmas->fHead = pObj->mtxMax.y;
 		pXmas->bDisp = true;
 		pXmas->bUse = true;
 
+		// 当たり判定の作成 =============================================================
+
+		// トップの球形当たり判定の作成
 		pXmas->aIdxCollision[0] = SetParentSphere(VEC_Y(pObj->mtxMax.y),
 			VECNULL,
 			D3DXCOLOR_NULL,
 			6, 
 			6, 
 			5.0f, 
-			true, 
+			false, 
 			&pXmas->mtxWorld);
 
-		g_nCntCol++;
+		g_nCntCol++;	// ツリーの当たり判定数を増加
 
+		// ツリーの葉っぱの部分の最下層の座標を取得
 		D3DXVECTOR3 posBottom = GetObjectMVector(nType, 0);
 
-		// 円錐の体積
-		float fVolume = (1.0f / 3.0f) * (powf(pXmas->fRadius, 2.0f) * D3DX_PI) * (pObj->mtxMax.y - posBottom.y);
-		float fHeight = (pObj->mtxMax.y - posBottom.y);	// 高さ
-		float fPosY = pObj->mtxMax.y - 10.0f;
-		float fChange = 20.0f;
+		float fHeight = (pObj->mtxMax.y - posBottom.y);	// ツリーの葉っぱ部分のサイズ
+		float fPosY = pObj->mtxMax.y - 10.0f;			// 球の位置
+		float fChange = 20.0f;							// 変動値
 
+		// 球の位置が葉っぱの一番下に行くまで当たり判定を作成
 		while (fPosY >= posBottom.y)
 		{
+			// 半径を計算
 			float fRadius = (pXmas->fRadius * ((pObj->mtxMax.y - fPosY) / fHeight)) * 1.05f;
 
+			// 球形当たり判定の作成
 			pXmas->aIdxCollision[g_nCntCol] = SetParentSphere(VEC_Y(fPosY),
 				VECNULL,
 				D3DXCOLOR_NULL,
@@ -249,9 +255,9 @@ void SetXmasTree(D3DXVECTOR3 pos, D3DXVECTOR3 rot, int nType)
 				true,
 				&pXmas->mtxWorld);
 
-			fPosY -= fChange;
+			fPosY -= fChange;		// 作成後、次の球の位置を下にずらす
 
-			g_nCntCol++;
+			g_nCntCol++;			// ツリーの当たり判定数を増加
 		}
 	}
 }

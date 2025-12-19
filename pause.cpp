@@ -102,7 +102,7 @@ void InitPause(void)
 	g_bSkipStart = false;
 
 	/*** 頂点バッファの生成 ***/
-	pDevice->CreateVertexBuffer(sizeof(VERTEX_2D) * 4 * (PAUSE_TYPE_MAX + 1),		// ポーズアイコンの種類 + 黒い背景
+	pDevice->CreateVertexBuffer(sizeof(VERTEX_2D) * 4 * (PAUSE_TYPE_MAX),		// ポーズアイコンの種類 + 黒い背景
 		D3DUSAGE_WRITEONLY,
 		FVF_VERTEX_2D,
 		D3DPOOL_MANAGED,

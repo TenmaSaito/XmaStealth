@@ -1118,7 +1118,7 @@ int SetVibration(int nLPower, int nRPower, int nTime)
 {
 	g_nCounterVibretion = nTime;
 	g_joyVibration.wLeftMotorSpeed = nLPower;
-	g_joyVibration.wLeftMotorSpeed = nRPower;
+	g_joyVibration.wRightMotorSpeed = nRPower;
 
 	XInputSetState(0, &g_joyVibration);
 

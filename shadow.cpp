@@ -54,7 +54,7 @@ void InitShadow(void)
 	VERTEX_3D *pVtx;					// 頂点情報へのポインタ
 
 	/*** 各変数の初期化 ***/
-	for (int nCntShadow = 0; nCntShadow < sizeof g_aShadow / sizeof(Shadow); nCntShadow++)
+	for (int nCntShadow = 0; nCntShadow < MAX_SHADOW; nCntShadow++)
 	{
 		g_aShadow[nCntShadow].pos = D3DXVECTOR3_NULL;
 		g_aShadow[nCntShadow].rot = D3DXVECTOR3_NULL;
@@ -79,7 +79,7 @@ void InitShadow(void)
 	/*** 頂点バッファの設定 ***/
 	g_pVtxBuffShadow->Lock(0, 0, (void**)&pVtx, 0);
 
-	for (int nCntShadow = 0; nCntShadow < sizeof g_aShadow / sizeof(Shadow); nCntShadow++)
+	for (int nCntShadow = 0; nCntShadow < MAX_SHADOW; nCntShadow++)
 	{
 		/*** 頂点座標の設定の設定 ***/
 		pVtx[0].pos.x = g_aShadow[nCntShadow].pos.x - g_aShadow[nCntShadow].fWidth;
@@ -411,16 +411,18 @@ void InvisibleShadow(int nIdxShadow, float fAlpha)
 {
 	VERTEX_3D* pVtx;					// 頂点情報へのポインタ
 
-	if (nIdxShadow == -1)
+	// 存在しないインデックスなら終了
+	if (nIdxShadow < 0 || nIdxShadow >= MAX_SHADOW)
 	{
 		return;
 	}
 
-	g_aShadow[nIdxShadow].col.a = fAlpha;
+	g_aShadow[nIdxShadow].col.a = fAlpha;	// 影の透明度を指定された値に設定
 
 	/*** 頂点バッファの設定 ***/
 	g_pVtxBuffShadow->Lock(0, 0, (void**)&pVtx, 0);
 
+	// 頂点バッファをインデックス分ずらす
 	pVtx += 4 * nIdxShadow;
 
 	/*** 頂点カラー設定 ***/

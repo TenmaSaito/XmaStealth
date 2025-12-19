@@ -511,11 +511,6 @@ void SetCamera(D3DXVECTOR3 posV, D3DXVECTOR3 posR, float fAngle, float zn, float
 	pCamera->fZlength = fZLength;
 	pCamera->fSpd = fSpd;
 	pCamera->fRotSpd = fRotSpd;
-
-	if (GetMode() == MODE_TITLE)
-	{
-		pCamera->posOffSet = posR;
-	}
 }
 
 //================================================================================================================
