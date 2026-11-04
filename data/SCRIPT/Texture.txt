@@ -1,0 +1,24 @@
+#==============================================================================
+#
+# テクスチャ読み込み専用スクリプトファイル [Texture.txt]
+# Author : TENMA SAITO
+#
+#==============================================================================
+SCRIPT		# 消すな
+
+#=================================================
+# 読み込むテクスチャファイル数
+#=================================================
+NUM_TEXTURE = 6
+
+#=================================================
+# テクスチャパス
+#=================================================
+TEXTURE_FILENAME = data/TEXTURE/UI/Result.png			# [0]リザルト
+TEXTURE_FILENAME = data/TEXTURE/UI/Ornament_Num.jpg		# [1]オーナメント数
+TEXTURE_FILENAME = data/TEXTURE/UI/Trash_Num.jpg		# [2]ゴミの数
+TEXTURE_FILENAME = data/TEXTURE/UI/Bonus.png			# [3]ボーナススコア
+TEXTURE_FILENAME = data/TEXTURE/UI/FinallyScore.png		# [4]最終スコア
+TEXTURE_FILENAME = data/TEXTURE/Number003.png			# [5]数字
+
+END_SCRIPT		# 消すな

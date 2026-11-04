@@ -1,19 +1,19 @@
-//================================================================================================================
+//==================================================================================
 //
-// DirectXの計算関連ヘッダファイル [mathUtil.h]
-// Author : TENMA
+// 計算関連ヘッダファイル [mathUtil.h]
+// Author : TENMA SAITO
 //
-//================================================================================================================
+//==================================================================================
 #ifndef _MATHUTIL_H_
 #define _MATHUTIL_H_
 
 //**********************************************************************************
-//*** インクルードファイル ***
+// *** インクルードファイル ***
 //**********************************************************************************
 #include "main.h"
 
 //**********************************************************************************
-//*** マクロ定義 ***
+// *** マクロ定義 ***
 //**********************************************************************************
 #define RECT_NULL				(RECT{0, 0, 0, 0})				// RECT初期化
 #define INT_VECTOR3_NULL		(INT_VECTOR3{ 0, 0, 0 })		// INT_VECTOR3初期化
@@ -26,22 +26,30 @@
 #define VEC_Z(z)				D3DXVECTOR3(0.0f, 0.0f, z)		// Zのみ変更
 #define Vec3(name)				D3DXVECTOR3	name				// Vector3省略版
 #define InitedVec3(name)		D3DXVECTOR3 name = {}			// 初期化済みVector3
+
+// --- 分割メッシュ(縮退三角形で繋いだトライアングルストリップ)のサイズ計算 ---
+#define MESH_VTX_NUM(nXBlock, nYBlock)		(((nXBlock) + 1) * ((nYBlock) + 1))							// 頂点数
+#define MESH_IDX_NUM(nXBlock, nYBlock)		((((nXBlock) + 1) * 2 * (nYBlock)) + (((nYBlock) - 1) * 2))	// インデックス数
+#define MESH_PRIM_NUM(nXBlock, nYBlock)		(((nXBlock) * (nYBlock) * 2) + (((nYBlock) - 1) * 4))		// 描画する三角形の数(縮退分を含む)
 #define OptVec3(name, x, y, z)	D3DXVECTOR3 name = D3DXVECTOR3(x, y, z)	// 初期化混合変数宣言
 #define InitRot(x, y, z)		RepairedRot(D3DXVECTOR3(x, y, z))	// 修正済み角度
+#define DEF_COL					D3DXCOLOR_NULL					// デフォルトカラー
+#define COL_R(r)				D3DXCOLOR(r, 1.0f, 1.0f, 1.0f)	// R値変更
+#define COL_A(a)				D3DXCOLOR(1.0f, 1.0f, 1.0f, a)	// A値変更
 
 //**********************************************************************************
-//*** カリングタイプ ***
+// *** カリングタイプ ***
 //**********************************************************************************
 typedef enum
 {
 	CULLINGTYPE_NONE = 0,		// カリング無し
 	CULLINGTYPE_FRONT,			// 表面カリング
 	CULLINGTYPE_BACK,			// 背面カリング
-	CULLINGTYPE_MAX				
+	CULLINGTYPE_MAX
 }CULLINGTYPE;
 
 //**********************************************************************************
-//*** int型Vector3構造体 ***
+// *** int型Vector3構造体 ***
 //**********************************************************************************
 typedef struct
 {
@@ -51,7 +59,7 @@ typedef struct
 }INT_VECTOR3;
 
 //**********************************************************************************
-//*** int型Vector2構造体 ***
+// *** int型Vector2構造体 ***
 //**********************************************************************************
 typedef struct
 {
@@ -60,7 +68,7 @@ typedef struct
 }INT_VECTOR2;
 
 //**********************************************************************************
-//*** 総合情報構造体 ***
+// *** 総合情報構造体 ***
 //**********************************************************************************
 typedef struct
 {
@@ -72,21 +80,21 @@ typedef struct
 } Data;
 
 //**********************************************************************************
-//*** プロトタイプ宣言 ***
+// *** プロトタイプ宣言 ***
 //**********************************************************************************
 bool CollisionBox(RECT rect, D3DXVECTOR3 pos);
 bool CollisionBoxZ(D3DXVECTOR4 rect, D3DXVECTOR3 pos);
-HRESULT CheckIndex(int TargetIndexMax, int Index, int TargetIndexMin = 0);
+HRESULT CheckIndex(int nIndexMax, int nIndex, int nIndexMin = 0);
 POINT_RECT SetPointRect(D3DXVECTOR3 p1, D3DXVECTOR3 p2, D3DXVECTOR3 p3, D3DXVECTOR3 p4);
 POINT_RECT SetRectToPointRect(RECT rect);
 void HomingPosToPos(D3DXVECTOR3 posTarget, D3DXVECTOR3 *posMover, float fSpeed);
 float GetPosToPos(D3DXVECTOR3 posTarget, D3DXVECTOR3 posMover);
 float RepairRot(float fRot);
-void RepairRot(float *pOut, const float *fAngle);
+void RepairRot(float *pOut, const float *pIn);
 void RepairRot(D3DXVECTOR3 *pOut, const D3DXVECTOR3 *pIn);
 float InverseRot(float fRot);
-D3DXVECTOR3 InverseRot(D3DXVECTOR3 fRot);
-D3DXVECTOR3 RepairedRot(const D3DXVECTOR3 pIn);
+D3DXVECTOR3 InverseRot(D3DXVECTOR3 rot);
+D3DXVECTOR3 RepairedRot(const D3DXVECTOR3 rotIn);
 D3DXVECTOR3 GetPosBetweenPos(D3DXVECTOR3 pos1, D3DXVECTOR3 pos2);
 D3DXCOLOR GetRandomColor(bool bUseAlphaRand);
 float GetPTPLength(D3DXVECTOR3 pos1, D3DXVECTOR3 pos2);
@@ -94,19 +102,20 @@ void RollPolygon(VERTEX_2D *pVtx, D3DXVECTOR3 pos, float fWidth, float fHeight, 
 void SetVtxTexture(VERTEX_2D *pVtx, float x, float y);
 void SetVtxTexture(VERTEX_3D *pVtx, float x, float y);
 void SetFullScreenPolygon(VERTEX_2D *pVtx);
+void SetCenterPolygon2D(VERTEX_2D *pVtx, D3DXVECTOR3 pos, float fWidth, float fHeight);
+void SetDefaultPolygon2D(VERTEX_2D *pVtx, D3DXCOLOR col = D3DXCOLOR_NULL);
 D3DXVECTOR3 DegreeToRadian(D3DXVECTOR3 degree);
 D3DXVECTOR3 RadianToDegree(D3DXVECTOR3 radian);
 D3DXVECTOR3 INTToFloat(INT_VECTOR3 nVector3);
 D3DXVECTOR2 INTToFloat(INT_VECTOR2 nVector2);
-D3DXVECTOR3 GetRandomVector3(int mx, int my, int mz);
+D3DXVECTOR3 GetRandomVector3(int nRangeX, int nRangeY, int nRangeZ);
 void SetIndexedVertex(VERTEX_3D *pVtx, D3DXVECTOR3 pos, int nXBlock, int nZBlock, float fWidth, float fDepth);
 int SetIndex(_Inout_ WORD *pIdx, _In_ int nXBlock, _In_ int nZBlock, _In_ int nOffSet = 0, _Inout_opt_ WORD *pIdxSub = NULL);
-void RepairFloat(float *fRepairTarget, int nCnt = 3);
+void RepairFloat(float *pTarget, int nCnt = 3);
 void UnableZFunction(void);
-void AbleAlphaFunction(D3DCMPFUNC funcType, DWORD value);
+void AbleAlphaFunction(D3DCMPFUNC alphaFunc, DWORD dwAlphaRef);
 void EndFunction(void);
 bool CheckPath(_In_ const char* pFileName);
-char *UniteChar(char *pOut, const char *fmt, ...);
 void GenerateMessageBox(_In_ UINT nType, _In_ const char *pCaption, _In_ const char* fmt, ...);
 void SetCullingType(D3DCULL type);
 #endif

@@ -1,30 +1,26 @@
-//================================================================================================================
+//==================================================================================
 //
-// DirectXのメッシュリングヘッダファイル [meshRing.h]
-// Author : TENMA
+// メッシュリングヘッダファイル [meshRing.h]
+// Author : TENMA SAITO
 //
-//================================================================================================================
+//==================================================================================
 #ifndef _MESHRING_H_
 #define _MESHRING_H_
 
 //**********************************************************************************
-//*** インクルードファイル ***
+// *** インクルードファイル ***
 //**********************************************************************************
 #include "game.h"
 
 //**********************************************************************************
-//*** マクロ定義 ***
-//**********************************************************************************
-
-//**********************************************************************************
-//*** プロトタイプ宣言 ***
+// *** プロトタイプ宣言 ***
 //**********************************************************************************
 void InitMeshRing(void);
 void UninitMeshRing(void);
 void UpdateMeshRing(void);
 void DrawMeshRing(void);
 
-void SetMeshRing(D3DXVECTOR3 pos, D3DXVECTOR3 rot, float fRadiusInner, float fRadiusOuter, int nIdxTexture, float fSpdInner, float fSpdOuter, int nLife);
+void SetMeshRing(D3DXVECTOR3 pos, D3DXVECTOR3 rot, float fRadiusInner, float fRadiusOuter, int nIdxTexture, float fSpdInner, float fSpdOuter, int nLife, D3DXCOLOR col = D3DXCOLOR_NULL);
 void SetIndexTextureRing(int nIdxTexture);
 int GetIndexTextureRing(void);
 #endif

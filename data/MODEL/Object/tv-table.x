@@ -345,7 +345,7 @@ Mesh {
    0.800000;0.800000;0.800000;;
    0.200000;0.189804;0.159216;;
    TextureFilename {
-    "data\\TEXTURE\\tv_tex.jpg";
+    "data\\TEXTURE\\tv_tex_1.jpg";
    }
   }
   Material {

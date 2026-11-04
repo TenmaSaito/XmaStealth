@@ -146,15 +146,15 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="2Dpolygon.cpp" />
+    <ClCompile Include="bearState.cpp" />
     <ClCompile Include="billboard.cpp" />
-    <ClCompile Include="bullet.cpp" />
     <ClCompile Include="camera.cpp" />
+    <ClCompile Include="characterMotion.cpp" />
     <ClCompile Include="cameraRanking.cpp" />
     <ClCompile Include="cameraTitle.cpp" />
+    <ClCompile Include="cameraTutorial.cpp" />
     <ClCompile Include="debugproc.cpp" />
     <ClCompile Include="effect.cpp" />
-    <ClCompile Include="enemy.cpp" />
-    <ClCompile Include="explosion.cpp" />
     <ClCompile Include="fade.cpp" />
     <ClCompile Include="field.cpp" />
     <ClCompile Include="game.cpp" />
@@ -164,7 +164,6 @@
     <ClCompile Include="gameoverBg.cpp" />
     <ClCompile Include="input.cpp" />
     <ClCompile Include="light.cpp" />
-    <ClCompile Include="line.cpp" />
     <ClCompile Include="loadxfile.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="mathUtil.cpp" />
@@ -177,32 +176,32 @@
     <ClCompile Include="ornament.cpp" />
     <ClCompile Include="pause.cpp" />
     <ClCompile Include="player.cpp" />
-    <ClCompile Include="polygon.cpp" />
+    <ClCompile Include="playerTitle.cpp" />
     <ClCompile Include="pressEnter.cpp" />
     <ClCompile Include="ranking.cpp" />
     <ClCompile Include="rankingScore.cpp" />
+    <ClCompile Include="score.cpp" />
     <ClCompile Include="shadow.cpp" />
     <ClCompile Include="sound.cpp" />
     <ClCompile Include="spotlight.cpp" />
     <ClCompile Include="timer.cpp" />
     <ClCompile Include="title.cpp" />
     <ClCompile Include="titleLogo.cpp" />
-    <ClCompile Include="tree.cpp" />
     <ClCompile Include="tutorial.cpp" />
     <ClCompile Include="wall.cpp" />
     <ClCompile Include="XmasTree.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="2Dpolygon.h" />
+    <ClInclude Include="bearState.h" />
     <ClInclude Include="billboard.h" />
-    <ClInclude Include="bullet.h" />
     <ClInclude Include="camera.h" />
+    <ClInclude Include="characterMotion.h" />
     <ClInclude Include="cameraRanking.h" />
     <ClInclude Include="cameraTitle.h" />
+    <ClInclude Include="cameraTutorial.h" />
     <ClInclude Include="debugproc.h" />
     <ClInclude Include="effect.h" />
-    <ClInclude Include="enemy.h" />
-    <ClInclude Include="explosion.h" />
     <ClInclude Include="fade.h" />
     <ClInclude Include="field.h" />
     <ClInclude Include="game.h" />
@@ -212,7 +211,6 @@
     <ClInclude Include="gameoverBg.h" />
     <ClInclude Include="input.h" />
     <ClInclude Include="light.h" />
-    <ClInclude Include="line.h" />
     <ClInclude Include="loadxfile.h" />
     <ClInclude Include="main.h" />
     <ClInclude Include="mathUtil.h" />
@@ -226,17 +224,18 @@
     <ClInclude Include="ornament.h" />
     <ClInclude Include="pause.h" />
     <ClInclude Include="player.h" />
-    <ClInclude Include="polygon.h" />
+    <ClInclude Include="playerTitle.h" />
     <ClInclude Include="pressEnter.h" />
     <ClInclude Include="ranking.h" />
     <ClInclude Include="rankingScore.h" />
+    <ClInclude Include="resource.h" />
+    <ClInclude Include="score.h" />
     <ClInclude Include="shadow.h" />
     <ClInclude Include="sound.h" />
     <ClInclude Include="spotlight.h" />
     <ClInclude Include="timer.h" />
     <ClInclude Include="title.h" />
     <ClInclude Include="titleLogo.h" />
-    <ClInclude Include="tree.h" />
     <ClInclude Include="tutorial.h" />
     <ClInclude Include="wall.h" />
     <ClInclude Include="XmasTree.h" />
@@ -247,6 +246,15 @@
     <Text Include="data\SCRIPT\motion_bear.txt" />
     <Text Include="data\SCRIPT\motion_child.txt" />
     <Text Include="data\SCRIPT\motion_parent.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="data\RANKING\RankingScore_Reset.bin" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="XmaStealth.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="data\TEXTURE\LOGO\XmaStealth_Icon.ico" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

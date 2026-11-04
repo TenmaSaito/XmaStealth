@@ -1,45 +1,53 @@
-//================================================================================================================
+//==================================================================================
 //
-// DirectXのXファイル読み込み処理 [loadxfile.cpp]
-// Author : TENMA
+// スクリプトファイル読み込み処理 [loadxfile.cpp]
+// Author : TENMA SAITO
 //
-//================================================================================================================
-//******************************************************************************************************
-//*** インクルードファイル ***
-//******************************************************************************************************
+// テクスチャ / モデル / 配置情報を記述したスクリプト(model.txt等)と、
+// 階層モデルのモーションスクリプト(motion_xxx.txt)を読み込む。
+//
+//==================================================================================
+//**********************************************************************************
+// *** インクルードファイル ***
+//**********************************************************************************
 #include "loadxfile.h"
 #include "camera.h"
-#include "enemy.h"
 #include "player.h"
 #include "object.h"
 #include "wall.h"
 #include "field.h"
-#include "tree.h"
-#include "explosion.h"
 #include "effect.h"
-#include "bullet.h"
 #include "shadow.h"
 #include "mesh.h"
 #include "XmasTree.h"
 #include "ornament.h"
+#include "playerTitle.h"
 
-//******************************************************************************************************
-//*** マクロ定義 ***
-//******************************************************************************************************
-#define MAX_MODEL				(MAX_PLAYER + MAX_ENEMY + MAX_OBJECT)		// 読み込めるモデル最大数
+//**********************************************************************************
+// *** マクロ定義 ***
+//**********************************************************************************
+#define MAX_MODEL				(MAX_PLAYER + MAX_MODEL_RESERVE + MAX_OBJECT)		// 読み込めるモデル最大数
+#define MAX_MODEL_RESERVE		(32)					// モデル数の予備 (旧 MAX_ENEMY の分)
 #define MAX_TEXTURE				(128)				// 読み込めるテクスチャの最大数
-#define READ_TEXTURENUM			"NUM_TEXTURE"		// 読み込むテクスチャ数の前文字列
-#define READ_TEXTUREPATH		"TEXTURE_FILENAME"	// テクスチャを読み込む印
-#define READ_MODELNUM			"NUM_MODEL"			// 読み込むモデル数の前文字列
-#define READ_MODELPATH			"MODEL_FILENAME"	// ファイル名を読み込む印
+#define MAX_MOTION_MODEL		(30)				// モーションスクリプトで読み込めるモデルの最大数
+
+// --- スクリプト共通 ---
+#define READ_SCRIPT				"SCRIPT"			// スクリプトの開始位置
+#define READ_ENDSCRIPT			"END_SCRIPT"		// スクリプトの終了位置
+#define READ_TEXTURENUM			"NUM_TEXTURE"		// 読み込むテクスチャ数
+#define READ_TEXTUREPATH		"TEXTURE_FILENAME"	// テクスチャのファイル名
+#define READ_MODELNUM			"NUM_MODEL"			// 読み込むモデル数
+#define READ_MODELPATH			"MODEL_FILENAME"	// モデルのファイル名
+
+// --- 配置情報ブロック ---
 #define READ_CAMERASET			"CAMERASET"			// カメラ情報の開始位置
 #define READ_ENDCAMERASET		"END_CAMERASET"		// カメラ情報の終了位置
 #define READ_MODELSET			"MODELSET"			// モデル情報の開始位置
 #define READ_ENDMODELSET		"END_MODELSET"		// モデル情報の終了位置
-#define READ_ORNAMENTSET		"ORNAMENTSET"		// ORNAMENT情報の開始位置
-#define READ_ENDORNAMENTSET		"END_ORNAMENTSET"	// ORNAMENT情報の終了位置
-#define READ_ORNAMENT			"ORNAMENT"			// ORNAMENTの開始位置
-#define READ_ENDORNAMENT		"END_ORNAMENT"		// ORNAMENTの終了位置
+#define READ_ORNAMENTSET		"ORNAMENTSET"		// オーナメント情報の開始位置
+#define READ_ENDORNAMENTSET		"END_ORNAMENTSET"	// オーナメント情報の終了位置
+#define READ_ORNAMENT			"ORNAMENT"			// オーナメント1種類分の開始位置
+#define READ_ENDORNAMENT		"END_ORNAMENT"		// オーナメント1種類分の終了位置
 #define READ_FIELDSET			"FIELDSET"			// 地面情報の開始位置
 #define READ_ENDFIELDSET		"END_FIELDSET"		// 地面情報の終了位置
 #define READ_WALLSET			"WALLSET"			// 壁情報の開始位置
@@ -58,6 +66,8 @@
 #define READ_ENDBULLETSET		"END_BULLETSET"		// 弾情報の終了位置
 #define READ_EXPLOSIONSET		"EXPLOSIONSET"		// 爆発情報の開始位置
 #define READ_ENDEXPLOSIONSET	"END_EXPLOSIONSET"	// 爆発情報の終了位置
+
+// --- 配置情報の項目 ---
 #define READ_POSV				"POSV"				// 視点位置
 #define READ_POSR				"POSR"				// 注視点位置
 #define READ_ZLENGTH			"ZLEN"				// 注視点距離
@@ -73,22 +83,19 @@
 #define READ_COL				"COL"				// 色
 #define READ_MOVE				"MOVE"				// 移動量
 #define READ_SPD				"SPD"				// 速度
-#define READ_ZFUNC				"ZFUNC"				// Zテストの有無
 #define READ_COLLISION			"COLLISION"			// 当たり判定の有無
 #define READ_CULL				"CULL"				// カリングタイプ
 #define READ_ROTSPD				"ROTSPEED"			// 回転速度
 #define READ_BLOCK				"BLOCK"				// 分割数
 #define READ_SIZE				"SIZE"				// サイズ
-#define READ_STAGERECT			"STAGERECT"			// 移動可能範囲
 #define READ_NUMORNAMENT		"NUM_ORNAMENT"		// 設定するオーナメントの数
 #define READ_WEIGHT				"WEIGHT"			// 重量
-#define READ_TEXTURECOUNT		"TEXANIMCNT"		// テクスチャアニメーション数
-#define READ_CODETEXT			"CODENAME"			// 判別用特殊文字列(デバッグ用)
-#define PLAYERTYPE				(-1)				// プレイヤーとなるXファイル
-#define ENEMYTYPE				(0)					// エネミーとなるXファイル
-#define OBJECTTYPE				(1)					// オブジェクトとなるXファイル
-#define READ_MOTION				"MOTION_FILENAME"	// キャラクターのモーションファイル名
 
+// --- MODELSET の INDEX に指定する設置タイプ ---
+#define PLAYERTYPE				(-1)				// プレイヤーとして設置
+#define OBJECTTYPE				(1)					// オブジェクトとして設置
+
+// --- モーションスクリプトの項目 ---
 #define READ_CHARACTER			"CHARACTERSET"		// 階層構造のキャラクター情報
 #define READ_ENDCHARACTER		"END_CHARACTERSET"	// キャラクター情報設定の解除
 #define READ_PARTS				"NUM_PARTS"			// パーツ数
@@ -107,1715 +114,1116 @@
 #define READ_KEY				"KEY"				// キーの読み込み
 #define READ_ENDKEY				"END_KEY"			// キー設定の解除
 #define READ_LOOP				"LOOP"				// ループ情報
-#define	READ_NUMKEY				"NUM_KEY"			// キー情報の数
+#define READ_NUMKEY				"NUM_KEY"			// キー情報の数
 #define READ_FRAME				"FRAME"				// フレーム数
 
-//****************************************************************************************************************
-//*** プロトタイプ宣言 ***
-//****************************************************************************************************************
-bool DeleteComments(char *aStr);
-
-//****************************************************************************************************************
-//*** グローバル変数 ***
-//****************************************************************************************************************
-LPDIRECT3DTEXTURE9 g_apTextureModel[MAX_TEXTURE] = {};		// 読み込んだテクスチャ
-char g_aXFileName[MAX_MODEL][MAX_PATH];				// Xファイルのパス
-char g_aTextureFileName[MAX_TEXTURE][MAX_PATH];		// テクスチャパス
-int g_nTextureNum = 0;				// 読み込むテクスチャ数
-int g_nModelNum = 0;				// 読み込んだモデルの数
-MOTION_INFO g_mInfo = {};			// モーション情報
-bool g_bReadData[MODE_MAX] = {};
-
-//================================================================================================================
-// --- 動的にメモリを確保する必要のあるデータの読み込み ---
-//================================================================================================================
-HRESULT InitData(_In_ const char* pScriptFileName, MODE modeSet)
+//**********************************************************************************
+// *** スクリプト読み込み状態構造体 ***
+//**********************************************************************************
+typedef struct
 {
-	return S_OK;
-}
+	FILE *pFile;				// 読み込み中のファイル
+	char aLine[MAX_PATH];		// 直前に読み込んだ1行(コメント除去済み)
+	bool bEof;					// 直前の読み込みでファイル終端に達したか
+} SCRIPT_READER;
 
-//================================================================================================================
+//**********************************************************************************
+// *** モーション読み込み状態構造体 ***
+//**********************************************************************************
+typedef struct
+{
+	MODE mode;								// 読み込み中のモード(タイトルか否かで登録先が変わる)
+	int aIdxObject[MAX_MOTION_MODEL];		// モデル番号 → オブジェクト番号の対応表
+	int nNumModelPath;						// 読み込んだモデルパスの数
+	MOTIONTYPE motionType;					// 次に登録するモーションの種類
+} MOTION_LOADER;
+
+//**********************************************************************************
+// *** プロトタイプ宣言 ***
+//**********************************************************************************
+// --- 共通 ---
+static bool DeleteComments(char *pLine);
+static bool ReadScriptLine(SCRIPT_READER *pReader);
+static const char *GetValue(const char *pLine);
+static HRESULT SeekScriptStart(SCRIPT_READER *pReader);
+static void ReleaseScriptTexture(void);
+
+// --- InitScript 用 ---
+static void ReadTexturePath(SCRIPT_READER *pReader, int nCntTexture);
+static void ReadModelPath(SCRIPT_READER *pReader, int nCntModel);
+static void ReadCameraSet(SCRIPT_READER *pReader);
+static void ReadOrnamentSet(SCRIPT_READER *pReader);
+static void ReadModelSet(SCRIPT_READER *pReader, int nCntModel);
+static void ReadXmasTreeSet(SCRIPT_READER *pReader, int nCntModel);
+static void ReadFieldSet(SCRIPT_READER *pReader, int nCntField);
+static void ReadMeshFieldSet(SCRIPT_READER *pReader, int nCntField);
+static void ReadWallSet(SCRIPT_READER *pReader, int nCntWall);
+static void SkipScriptBlock(SCRIPT_READER *pReader, const char *pEndText);
+static void ReadTextureIndexSet(SCRIPT_READER *pReader, const char *pEndText, void (*pSetFunc)(int), const char *pErrorCaption, const char *pErrorText);
+
+// --- LoadMotion 用 ---
+static HRESULT ReadMotionLine(SCRIPT_READER *pReader);
+static void ReadMotionModelPath(SCRIPT_READER *pReader, MOTION_LOADER *pLoader);
+static HRESULT ReadCharacterSet(SCRIPT_READER *pReader, MOTION_LOADER *pLoader);
+static HRESULT ReadPartsSet(SCRIPT_READER *pReader, MOTION_LOADER *pLoader, PartsInfo *pParts);
+static HRESULT ReadMotionSet(SCRIPT_READER *pReader, MOTION_LOADER *pLoader);
+static HRESULT ReadKeySet(SCRIPT_READER *pReader, int nKeySet);
+static HRESULT ReadKey(SCRIPT_READER *pReader, int nKeySet, int nKey);
+
+//**********************************************************************************
+// *** グローバル変数 ***
+//**********************************************************************************
+static LPDIRECT3DTEXTURE9 g_apTextureModel[MAX_TEXTURE] = {};	// 読み込んだテクスチャ
+static char g_aXFileName[MAX_MODEL][MAX_PATH];					// 読み込んだXファイルのパス
+static char g_aTextureFileName[MAX_TEXTURE][MAX_PATH];			// 読み込んだテクスチャのパス
+static int g_nTextureNum = 0;									// 読み込むテクスチャ数
+static int g_nModelNum = 0;										// 読み込んだモデルの数
+static MOTION_INFO g_motionInfo = {};							// 読み込み中のモーション情報
+
+//==================================================================================
 // --- スクリプトの読み込み ---
-//================================================================================================================
-HRESULT InitScript(_In_ const char* pScriptFileName)
+//==================================================================================
+HRESULT InitScript(_In_ const char *pScriptFileName)
 {
-	/*** デバイスの取得 ***/
-	LPDIRECT3DDEVICE9 pDevice = GetDevice();
-	HWND hWnd = GetHandleWindow();
-	if (hWnd == NULL)
-	{ // ハンドル有無確認
+	if (GetHandleWindow() == NULL || pScriptFileName == NULL)
+	{ // ウィンドウ未生成 or ファイル名未指定
 		return E_FAIL;
 	}
 
-	if (pScriptFileName == NULL)
-	{
-		return E_FAIL;
-	}
-
-	/** スクリプト読み込み関連 **/
-	FILE *pFile = NULL;				// ファイルポインタ
-	HRESULT hr = E_FAIL;			// ファイルの読み込み確認処理
-	char aStr[MAX_PATH] = {};		// Xファイルのファイル名
-	char aTexturePath[MAX_PATH] = {};		// テクスチャパス
-	char *PosTrash;					// ゴミ捨て場(コメント消去用変数)
-	char *pStart;					// 値の開始位置
-	const char *pNull = "\0";		// 何もなし
-	char aErrorText[MAX_PATH] = {};	// エラー文用
-	MODE mode = GetModeNext();
-
-	/** 設置前パス読み込み関連 **/
+	SCRIPT_READER reader = {};		// スクリプト読み込み状態
 	int nCntTexture = 0;			// 読み込んだテクスチャ数
-	int nCntModel = 0;				// 現在のモデル数
-	int nModel = 0;					// 設置したモデル数
+	int nCntModel = 0;				// 読み込んだモデルパス数
+	int nCntSetModel = 0;			// 設置したモデル数(MODELSET + XMASTREESET)
+	int nCntField = 0;				// 設置した床の数
+	int nCntWall = 0;				// 設置した壁の数
 
-	int nField = 0;							// 床の数
-	int nWall = 0;							// 壁の数
-
-	/** 木(ビルボード)設置関連 **/
-	int nTree = 0;				// 木の数
-
-	/*** 読み込んだモデル数のリセット ***/
+	/*** 前回読み込んだデータの破棄・初期化 ***/
+	// 0クリアだけだと解放前のテクスチャが参照不能になりリークするため、必ずReleaseする
+	ReleaseScriptTexture();
 	g_nModelNum = 0;
 	g_nTextureNum = 0;
-
-	for (int nCntTexture = 0; nCntTexture < MAX_TEXTURE; nCntTexture++)
-	{
-		ZeroMemory(&g_apTextureModel[nCntTexture], sizeof(LPDIRECT3DTEXTURE9));
-	}
-
-	for (int nCntTextureName = 0; nCntTextureName < MAX_TEXTURE; nCntTextureName++)
-	{
-		ZeroMemory(&g_aTextureFileName[nCntTexture], sizeof g_aTextureFileName[nCntTexture]);
-	}
-	
-	for (int nCntXModelName = 0; nCntXModelName < MAX_MODEL; nCntXModelName++)
-	{
-		ZeroMemory(&g_aXFileName[nCntXModelName], sizeof g_aXFileName[nCntXModelName]);
-	}
+	ZeroMemory(g_aTextureFileName, sizeof g_aTextureFileName);
+	ZeroMemory(g_aXFileName, sizeof g_aXFileName);
 
 	/*** ファイルオープン ***/
-	pFile = fopen(pScriptFileName, "r");
-	if (pFile == NULL)
+	reader.pFile = fopen(pScriptFileName, "r");
+	if (reader.pFile == NULL)
 	{ // ファイルオープン失敗時
 		GenerateMessageBox(MB_ICONERROR, "Error (0)", "Scriptファイルの読み込みに失敗しました。");
 		return E_FAIL;
 	}
 
-	/*** SCRIPT確認 ***/
-	while (1)
+	/*** SCRIPT の行まで読み飛ばす ***/
+	if (FAILED(SeekScriptStart(&reader)))
 	{
-		memset(aStr, NULL, sizeof aStr);					// 文字列を初期化
-		(void)fgets(aStr, sizeof aStr, pFile);				// メモ帳から一列取得
-		/*** コメント消去処理 ***/
-		if (DeleteComments(&aStr[0]))
-		{ // 取得後、最初の文字が#(コメントアウト宣言)だった場合、読み込まない
-			if (strcmp(aStr, "SCRIPT") == NULL)
-			{ // SCRIPT発見時読み込み開始
-				break;
-			}
-			else if (feof(pFile) != NULL)
-			{ // 発見できなかった場合読み込み終了 E_FAIL
-				GenerateMessageBox(MB_ICONERROR, "Error (1)", "Scriptの読み込み開始位置が指定されていません。");
-
-				/*** 読み込み終了 ***/
-				fclose(pFile);
-
-				return E_FAIL;
-			}
-		}
+		fclose(reader.pFile);
+		return E_FAIL;
 	}
 
-	/*** 読み込みループ処理 ***/
+	/*** END_SCRIPT まで1行ずつ解釈 ***/
 	while (1)
 	{
-		memset(aStr, NULL, sizeof aStr);					// 文字列を初期化
-		(void)fgets(aStr, sizeof aStr, pFile);				// メモ帳から一列取得
-
-		if (feof(pFile) != 0) break;						// もし取得後EOFの場合、読み込み終了
-		/*** コメント消去処理 ***/
-		if (DeleteComments(&aStr[0]))
-		{ // 取得後、最初の文字が#(コメントアウト宣言)だった場合、読み込まない
-			/*** END_SCRIPTか確認 ***/
-			if (strstr(aStr, READ_TEXTURENUM) != NULL)
-			{ // 読み込むテクスチャ数を取得
-				pStart = strchr(aStr, '=');
-
-				/** テクスチャ数を取得 **/
-				(void)sscanf(pStart + 1, "%d", &g_nTextureNum);
-				if (g_nTextureNum > MAX_TEXTURE)
-				{ // 読み込むテクスチャ数が上限を超えていた場合、上限以下に制限
-					g_nTextureNum = MAX_TEXTURE;
-				}
-			}
-			else if (strstr(aStr, READ_TEXTUREPATH) != NULL && nCntTexture < g_nTextureNum)
-			{ // テクスチャパスの読み取り及びテクスチャロード (読み込む数分のみ)
-				memset(&g_aTextureFileName[nCntTexture], NULL, sizeof g_aTextureFileName[nCntTexture]);		// 文字列を初期化
-
-				pStart = strchr(aStr, '=');
-
-				/** テクスチャパスの読み取り **/
-				(void)sscanf(pStart + 1, "%s", &g_aTextureFileName[nCntTexture]);
-
-				CheckPath(&g_aTextureFileName[nCntTexture][0]);
-
-				/*** テクスチャの読み込み ***/
-				hr = D3DXCreateTextureFromFile(pDevice,
-					g_aTextureFileName[nCntTexture],
-					&g_apTextureModel[nCntTexture]);
-
-				if (FAILED(hr))
-				{ // テクスチャの読み込み失敗時
-					GenerateMessageBox(MB_ICONERROR, 
-						"Error (1)", 
-						"%d番目のテクスチャの読み込みに失敗しました。",
-						nCntTexture);
-				}
-
-				nCntTexture++;
-			}
-			else if (strstr(aStr, READ_MODELNUM) != NULL)
-			{ // モデル数の読み込み
-				pStart = strchr(aStr, '=');
-
-				/** モデル数の読み込み **/
-				(void)sscanf(pStart + 1, "%d", &g_nModelNum);
-				if (g_nModelNum > MAX_MODEL)
-				{ // モデル数が上限を超えた場合、制限
-					g_nModelNum = MAX_MODEL;
-				}
-			}
-			else if (strstr(aStr, READ_MODELPATH) != NULL && nCntModel < g_nModelNum)
-			{ // モデルパスの読み込み
-				memset(g_aXFileName[nCntModel], NULL, sizeof g_aXFileName[nCntModel]);		// 文字列を初期化
-				pStart = strchr(aStr, '=');
-
-				/** モデルパスの読み込み **/
-				(void)sscanf(pStart + 1, "%s", &g_aXFileName[nCntModel]);
-				hr = LoadObject(g_aXFileName[nCntModel]);
-
-				// 読み込み失敗時
-				if (FAILED(hr))
-				{ // モデルの読み込みに失敗
-					GenerateMessageBox(MB_ICONERROR,
-						"Error (2)",
-						"%d番目のモデルの読み込みに失敗しました。",
-						nCntModel);
-				}
-
-				nCntModel++;
-			}
-			else if (strcmp(aStr, READ_CAMERASET) == NULL)
-			{ // カメラの設置
-				/** カメラ関連 **/
-				INT_VECTOR3 nPosV = INT_VECTOR3_NULL;		// 変換前カメラ位置
-				D3DXVECTOR3 posV = D3DXVECTOR3_NULL;		// カメラ位置
-				INT_VECTOR3 nPosR = INT_VECTOR3_NULL;		// 変換前注視点位置
-				D3DXVECTOR3 posR = D3DXVECTOR3_NULL;		// 注視点位置
-				int nZlen = 0;			// 変換前注視点距離
-				float fZlen = 0.0f;		// 注視点距離
-				int nAngle = 0;			// 変換前視野角
-				float vAngle = 0.0f;	// 視野角
-				int nZn = 0;			// 変換前描画開始距離
-				float zn = 0.0f;		// 描画開始距離
-				int nZf = 0;			// 変換前描画終了距離
-				float zf = 0.0f;		// 描画終了距離
-				float fRotSpd = 0.0f;	// 回転速度
-				float fSpd = 0.0f;		// 速度
-
-				while (1)
-				{
-					memset(aStr, NULL, sizeof aStr);					// 文字列を初期化
-					(void)fgets(aStr, sizeof aStr, pFile);				// メモ帳から一列取得
-					/*** コメント消去処理 ***/
-					if (DeleteComments(&aStr[0]))
-					{ // 取得後、最初の文字が#(コメントアウト宣言)だった場合、読み込まない
-						if (strstr(aStr, READ_POSV) != NULL)
-						{ // カメラの視点位置
-							pStart = strchr(aStr, '=');
-
-							/** カメラの視点位置の読み込み **/
-							(void)sscanf(pStart + 1, "%d %d %d", &nPosV.x, &nPosV.y, &nPosV.z);
-						}
-						else if (strstr(aStr, READ_POSR) != NULL)
-						{ // カメラの注視点の位置
-							pStart = strchr(aStr, '=');
-
-							/** カメラの注視点の位置の読み込み **/
-							(void)sscanf(pStart + 1, "%d %d %d", &nPosR.x, &nPosR.y, &nPosR.z);
-						}
-						else if (strstr(aStr, READ_ZLENGTH) != NULL)
-						{ // カメラの注視点との距離
-							pStart = strchr(aStr, '=');
-
-							/** カメラの注視点との距離の読み込み **/
-							(void)sscanf(pStart + 1, "%d", &nZlen);
-						}
-						else if (strstr(aStr, READ_VANGLE) != NULL)
-						{ // 視野角
-							pStart = strchr(aStr, '=');
-
-							/** 視野角の読み込み **/
-							(void)sscanf(pStart + 1, "%d", &nAngle);
-						}
-						else if (strstr(aStr, READ_ZN) != NULL)
-						{ // 描画開始距離
-							pStart = strchr(aStr, '=');
-
-							/** 描画開始距離の読み込み **/
-							(void)sscanf(pStart + 1, "%d", &nZn);
-						}
-						else if (strstr(aStr, READ_ZF) != NULL)
-						{ // 描画終了距離
-							pStart = strchr(aStr, '=');
-
-							/** 描画終了距離の読み込み **/
-							(void)sscanf(pStart + 1, "%d", &nZf);
-						}
-						else if (strstr(aStr, READ_SPD) != NULL)
-						{ // 移動速度
-							pStart = strchr(aStr, '=');
-
-							/** 移動速度の読み込み **/
-							(void)sscanf(pStart + 1, "%f", &fSpd);
-						}
-						else if (strstr(aStr, READ_ROTSPD) != NULL)
-						{ // 回転速度
-							pStart = strchr(aStr, '=');
-
-							/** 回転速度の読み込み **/
-							(void)sscanf(pStart + 1, "%f", &fRotSpd);
-						}
-
-						/*** モデル情報の終了 ***/
-						if (strstr(aStr, READ_ENDCAMERASET) != NULL)
-						{ // カメラの設置
-							posV = INTToFloat(nPosV);	// 視点位置をfloatに変換
-							posR = INTToFloat(nPosR);	// 注視点位置をfloatに変換
-							
-							fZlen = (float)nZlen;		// 注視点距離をfloatに変換
-							vAngle = (float)nAngle;		// 視野角をfloatに変換
-							zn = (float)nZn;			// 描画開始距離をfloatに変換
-							zf = (float)nZf;			// 描画終了距離をfloatに変換
-
-							/** カメラの設置 **/
-							SetCamera(posV, posR, vAngle, zn, zf, fZlen, fSpd, fRotSpd);
-
-							break;
-						}
-					}
-				}
-			}
-			else if (strcmp(aStr, READ_ORNAMENTSET) == NULL)
-			{
-				int nNumOrnament = -1;		// 読み込むオーナメント数をリセット
-				int nCntOrnament = 0;		// 読み込んだオーナメント数をリセット
-				
-				while (1)
-				{
-					memset(aStr, NULL, sizeof aStr);					// 文字列を初期化
-					(void)fgets(aStr, sizeof aStr, pFile);				// メモ帳から一列取得
-					/*** コメント消去処理 ***/
-					if (DeleteComments(&aStr[0]))
-					{
-						if (strstr(aStr, READ_NUMORNAMENT) != NULL)
-						{
-							pStart = strchr(aStr, '=');
-
-							/** 設定数の読み込み **/
-							(void)sscanf(pStart + 1, "%d", &nNumOrnament);
-						}
-						else if (strcmp(aStr, READ_ORNAMENT) == NULL && nCntOrnament < nNumOrnament)
-						{
-							int nOrnament = -1;
-							int nType = -1;
-							float fRadius = 0.0f;
-							float fWeight = 0.0f;
-
-							while (1)
-							{
-								memset(aStr, NULL, sizeof aStr);					// 文字列を初期化
-								(void)fgets(aStr, sizeof aStr, pFile);				// メモ帳から一列取得
-								/*** コメント消去処理 ***/
-								if (DeleteComments(&aStr[0]))
-								{
-									if (strstr(aStr, READ_TYPE) != NULL)
-									{
-										pStart = strchr(aStr, '=');
-
-										/** モデル番号の読み込み **/
-										(void)sscanf(pStart + 1, "%d", &nType);
-									}
-									else if (strstr(aStr, READ_ISSTAR) != NULL)
-									{
-										pStart = strchr(aStr, '=');
-
-										/** 当たり判定の半径の読み込み **/
-										(void)sscanf(pStart + 1, "%d", &nOrnament);
-									}
-									else if (strstr(aStr, READ_RADIUS) != NULL)
-									{
-										pStart = strchr(aStr, '=');
-
-										/** 当たり判定の半径の読み込み **/
-										(void)sscanf(pStart + 1, "%f", &fRadius);
-									}
-									else if (strstr(aStr, READ_WEIGHT) != NULL)
-									{
-										pStart = strchr(aStr, '=');
-
-										/** 当たり判定の半径の読み込み **/
-										(void)sscanf(pStart + 1, "%f", &fWeight);
-									}
-									else if (strstr(aStr, READ_ENDORNAMENT) != NULL)
-									{
-										// オーナメント情報の登録
-										SettingOrnamentInfo(nOrnament, nType, fRadius, fWeight);
-										nCntOrnament++;
-										break;
-									}
-								}
-							}
-						}
-						else if (strcmp(aStr, READ_ENDORNAMENTSET) == NULL)
-						{
-							break;
-						}
-					}
-				}
-			}
-			else if (strcmp(aStr, READ_MODELSET) == NULL && nModel < MAX_MODEL)
-			{ // Xファイルのモデル設置
-				/** 設置共通関連 **/
-				INT_VECTOR3 nPos = INT_VECTOR3_NULL;		// float変換前の位置
-				D3DXVECTOR3 pos = D3DXVECTOR3_NULL;			// Xファイルの位置
-				INT_VECTOR3 nDegree = INT_VECTOR3_NULL;		// float変換前の角度
-				D3DXVECTOR3 degree = D3DXVECTOR3_NULL;		// 変換前の角度
-				D3DXVECTOR3 rot = D3DXVECTOR3_NULL;			// Xファイルの変換後角度
-
-				/** モデル設置関連 **/
-				int nIndexModel = 0;			// 読み込んだモデルのインデックス
-				int nTypeModel = 1;				// 読み込んだモデルのタイプ
-				float fSpd = 0.0f;				// 速度
-				int nUseCollision = 0;			// 当たり判定の有無
-				bool bUseCollision = false;		// 当たり判定の有無
-
-				while (1)
-				{
-					memset(aStr, NULL, sizeof aStr);					// 文字列を初期化
-					(void)fgets(aStr, sizeof aStr, pFile);				// メモ帳から一列取得
-					/*** コメント消去処理 ***/
-					if (DeleteComments(&aStr[0]))
-					{ 
-						if (strstr(aStr, READ_INDEX) != NULL)
-						{ // モデル設置タイプ
-							pStart = strchr(aStr, '=');
-							
-							/** モデル設置タイプの読み込み **/
-							(void)sscanf(pStart + 1, "%d", &nTypeModel);
-						}
-						else if (strstr(aStr, READ_TYPE) != NULL)
-						{ // 設置モデルの種類
-							pStart = strchr(aStr, '=');
-
-							/** 設置モデルの種類の読み込み **/
-							(void)sscanf(pStart + 1, "%d", &nIndexModel);
-						}
-						else if (strstr(aStr, READ_POS) != NULL)
-						{ // モデルの位置
-							pStart = strchr(aStr, '=');
-
-							/** モデルの位置の読み込み **/
-							(void)sscanf(pStart + 1, "%d %d %d", &nPos.x, &nPos.y, &nPos.z);
-						}
-						else if (strstr(aStr, READ_ROT) != NULL)
-						{ // モデルの角度
-							pStart = strchr(aStr, '=');
-
-							/** モデルの角度の読み込み **/
-							(void)sscanf(pStart + 1, "%d %d %d", &nDegree.x, &nDegree.y, &nDegree.z);
-						}
-						else if (strstr(aStr, READ_SPD) != NULL)
-						{ // モデルの移動速度 (キャラクターのみ)
-							pStart = strchr(aStr, '=');
-
-							/** モデルの移動速度の読み込み **/
-							(void)sscanf(pStart + 1, "%f", &fSpd);
-						}
-						else if (strstr(aStr, READ_COLLISION) != NULL)
-						{ // カメラの注視点の位置
-							pStart = strchr(aStr, '=');
-
-							/** カメラの注視点の位置の読み込み **/
-							(void)sscanf(pStart + 1, "%d", &nUseCollision);
-
-							if (nUseCollision < 0 || nUseCollision >= COLLISIONTYPE_MAX)
-							{
-								nUseCollision = 0;
-							}
-						}
-
-						/*** モデル情報の終了 ***/
-						if (strstr(aStr, READ_ENDMODELSET) != NULL)
-						{ // モデルの読み込みの終了
-							if (nIndexModel < g_nModelNum)
-							{ // インデックス範囲内
-								pos = INTToFloat(nPos);			// モデルの位置をfloatに変換
-								
-								degree = INTToFloat(nDegree);	// モデルの角度をfloatに変換
-								rot = DegreeToRadian(degree);	// 角度をRadianに変換
-
-								/*** モデルのタイプにより設置タイプを変更 ***/
-								switch (nTypeModel)
-								{
-								// プレイヤーの場合
-								case PLAYERTYPE:
-
-									/** プレイヤーの設置 **/
-									SetPlayer(pos, rot, NULL);
-
-									break;
-
-								// オブジェクトの場合
-								case OBJECTTYPE:
-
-									/** オブジェクトの設置 **/
-									SetObject(pos, rot, nIndexModel, (COLLISIONTYPE)nUseCollision);
-
-									break;
-								}
-							}
-							else
-							{ // インデックス範囲外
-								// インデックスの指定に失敗
-								GenerateMessageBox(MB_ICONERROR,
-									"Error (2)",
-									"%d番目のモデルのインデックス設定に失敗しました。",
-									nModel);
-							}
-
-							/*** 設置したモデル数を増加 ***/
-							nModel++;
-
-							break;
-						}
-					}
-				}
-			}
-			else if (strcmp(aStr, READ_XMASTREESET) == NULL && nModel < MAX_MODEL)
-			{ // XMASTREEの設置
-				/** 設置共通関連 **/
-				INT_VECTOR3 nPos = INT_VECTOR3_NULL;		// float変換前の位置
-				D3DXVECTOR3 pos = D3DXVECTOR3_NULL;			// Xファイルの位置
-				INT_VECTOR3 nDegree = INT_VECTOR3_NULL;		// float変換前の角度
-				D3DXVECTOR3 degree = D3DXVECTOR3_NULL;		// 変換前の角度
-				D3DXVECTOR3 rot = D3DXVECTOR3_NULL;			// Xファイルの変換後角度
-
-				/** モデル設置関連 **/
-				int nIndexModel = 0;			// 読み込んだモデルのインデックス
-
-				while (1)
-				{
-					memset(aStr, NULL, sizeof aStr);					// 文字列を初期化
-					(void)fgets(aStr, sizeof aStr, pFile);				// メモ帳から一列取得
-					/*** コメント消去処理 ***/
-					if (DeleteComments(&aStr[0]))
-					{
-						if (strstr(aStr, READ_TYPE) != NULL)
-						{ // 設置モデルの種類
-							pStart = strchr(aStr, '=');
-
-							/** 設置モデルの種類の読み込み **/
-							(void)sscanf(pStart + 1, "%d", &nIndexModel);
-						}
-						else if (strstr(aStr, READ_POS) != NULL)
-						{ // モデルの位置
-							pStart = strchr(aStr, '=');
-
-							/** モデルの位置の読み込み **/
-							(void)sscanf(pStart + 1, "%d %d %d", &nPos.x, &nPos.y, &nPos.z);
-						}
-						else if (strstr(aStr, READ_ROT) != NULL)
-						{ // モデルの角度
-							pStart = strchr(aStr, '=');
-
-							/** モデルの角度の読み込み **/
-							(void)sscanf(pStart + 1, "%d %d %d", &nDegree.x, &nDegree.y, &nDegree.z);
-						}
-
-						/*** モデル情報の終了 ***/
-						if (strstr(aStr, READ_ENDXMASTREESET) != NULL)
-						{ // モデルの読み込みの終了
-							if (nIndexModel < g_nModelNum)
-							{ // インデックス範囲内
-								pos = INTToFloat(nPos);			// モデルの位置をfloatに変換
-
-								degree = INTToFloat(nDegree);	// モデルの角度をfloatに変換
-								rot = DegreeToRadian(degree);	// 角度をRadianに変換
-
-								/*** 設置 ***/
-								SetXmasTree(pos, rot, nIndexModel);
-							}
-							else
-							{ // インデックス範囲外
-								// インデックスの指定に失敗
-								GenerateMessageBox(MB_ICONERROR,
-									"Error (2)",
-									"%d番目のモデルのインデックス設定に失敗しました。",
-									nModel);
-							}
-
-							/*** 設置したモデル数を増加 ***/
-							nModel++;
-
-							break;
-						}
-					}
-				}
-			}
-			else if (strcmp(aStr, READ_FIELDSET) == NULL)
-			{ // 床情報
-				/** 設置共通関連 **/
-				INT_VECTOR3 nPos = INT_VECTOR3_NULL;		// float変換前の位置
-				D3DXVECTOR3 pos = D3DXVECTOR3_NULL;			// Xファイルの位置
-				INT_VECTOR3 nDegree = INT_VECTOR3_NULL;		// float変換前の角度
-				D3DXVECTOR3 degree = D3DXVECTOR3_NULL;		// 変換前の角度
-				D3DXVECTOR3 rot = D3DXVECTOR3_NULL;			// Xファイルの変換後角度
-
-				/** 壁、床設置関連 **/
-				INT_VECTOR3 nSize = INT_VECTOR3_NULL;	// 変換前サイズ
-				D3DXVECTOR3 size = D3DXVECTOR3_NULL;	// 大きさ
-				INT_VECTOR2 nBlock = INT_VECTOR2_NULL;	// 変換前分割数
-				D3DXVECTOR2 block = D3DXVECTOR2_NULL;	// 分割数
-				D3DXVECTOR3 move = D3DXVECTOR3_NULL;	// 移動量
-				D3DXCOLOR col = D3DXCOLOR_NULL;			// 色
-				D3DCULL cullType = D3DCULL_CCW;			// カリングタイプ
-				int nTexType = 0;				// テクスチャの種類
-
-				while (1)
-				{
-					memset(aStr, NULL, sizeof aStr);					// 文字列を初期化
-					(void)fgets(aStr, sizeof aStr, pFile);				// メモ帳から一列取得
-					/*** コメント消去処理 ***/
-					if (DeleteComments(&aStr[0]))
-					{ // 取得後、最初の文字が#(コメントアウト宣言)だった場合、読み込まない
-						if (strstr(aStr, READ_TEXTYPE) != NULL)
-						{ // テクスチャの種類
-							pStart = strchr(aStr, '=');
-
-							/** テクスチャの種類の読み込み **/
-							(void)sscanf(pStart + 1, "%d", &nTexType);
-						}
-						else if (strstr(aStr, READ_POS) != NULL)
-						{ // 床の移動量
-							pStart = strchr(aStr, '=');
-
-							/** 床の移動量の読み込み **/
-							(void)sscanf(pStart + 1, "%d %d %d", &nPos.x, &nPos.y, &nPos.z);
-						}
-						else if (strstr(aStr, READ_MOVE) != NULL)
-						{ // 床の移動量
-							pStart = strchr(aStr, '=');
-
-							/** 床の移動量の読み込み **/
-							(void)sscanf(pStart + 1, "%f %f", &move.x, &move.z);
-						}
-						else if (strstr(aStr, READ_SIZE) != NULL)
-						{ // 床のサイズ
-							pStart = strchr(aStr, '=');
-
-							/** 床のサイズの読み込み **/
-							(void)sscanf(pStart + 1, "%d %d", &nSize.x, &nSize.y);
-						}
-						else if (strstr(aStr, READ_ROT) != NULL)
-						{ // 床の角度
-							pStart = strchr(aStr, '=');
-
-							/** 床の角度の読み込み **/
-							(void)sscanf(pStart + 1, "%d %d %d", &nDegree.x, &nDegree.y, &nDegree.z);
-						}
-						else if (strstr(aStr, READ_BLOCK) != NULL)
-						{ // 床の拡大倍率
-							pStart = strchr(aStr, '=');
-
-							/** 床の拡大倍率の読み込み **/
-							(void)sscanf(pStart + 1, "%d %d", &nBlock.x, &nBlock.y);
-						}
-						else if (strstr(aStr, READ_SIZE) != NULL)
-						{ // 床のサイズ
-							pStart = strchr(aStr, '=');
-
-							/** 床のサイズの読み込み **/
-							(void)sscanf(pStart + 1, "%d %d", &nSize.x, &nSize.y);
-						}
-						else if (strstr(aStr, READ_CULL) != NULL)
-						{ // カリングタイプ設定
-							pStart = strchr(aStr, '=');
-
-							/** カリングタイプの読み込み **/
-							(void)sscanf(pStart + 1, "%d", &cullType);
-						}
-
-						/*** 床情報の終了 ***/
-						if (strstr(aStr, READ_ENDFIELDSET) != NULL)
-						{ // 床情報の終了
-							if (nTexType < g_nTextureNum)
-							{ // テクスチャインデックス範囲内
-								pos = INTToFloat(nPos);			// 床の位置をfloatに変換
-
-								degree = INTToFloat(nDegree);	// 床の角度をfloatに変換
-								rot = DegreeToRadian(degree);	// 角度をRadianに変換
-
-								block = INTToFloat(nBlock);		// 床の拡大倍率のfloatに変換
-								size = INTToFloat(nSize);		// 床のサイズをfloatに変換
-
-								/** 床の設置 **/
-								SetField(pos, move, rot, size.x, size.y, nTexType, (int)block.x, (int)block.y, cullType);
-							}
-							else
-							{ // テクスチャインデックス範囲外
-								// テクスチャの設定に失敗
-								GenerateMessageBox(MB_ICONERROR,
-									"Error (4)",
-									"%d番目の床のテクスチャ設定に失敗しました。",
-									nField);
-							}
-
-							nField++;
-
-							break;
-						}
-					}
-				}
-			}
-			else if (strcmp(aStr, READ_MESHFIELDSET) == NULL)
-			{ // 床情報
-				/** 設置共通関連 **/
-				INT_VECTOR3 nPos = INT_VECTOR3_NULL;		// float変換前の位置
-				D3DXVECTOR3 pos = D3DXVECTOR3_NULL;			// Xファイルの位置
-				INT_VECTOR3 nDegree = INT_VECTOR3_NULL;		// float変換前の角度
-				D3DXVECTOR3 degree = D3DXVECTOR3_NULL;		// 変換前の角度
-				D3DXVECTOR3 rot = D3DXVECTOR3_NULL;			// Xファイルの変換後角度
-
-				/** 壁、床設置関連 **/
-				INT_VECTOR3 nSize = INT_VECTOR3_NULL;	// 変換前サイズ
-				D3DXVECTOR3 size = D3DXVECTOR3_NULL;	// 大きさ
-				INT_VECTOR2 nBlock = INT_VECTOR2_NULL;	// 変換前分割数
-				D3DXVECTOR2 block = D3DXVECTOR2_NULL;	// 分割数
-				D3DXCOLOR col = D3DXCOLOR_NULL;			// 色
-				D3DCULL cullType = D3DCULL_CCW;			// カリングタイプ
-				int nTexType = 0;				// テクスチャの種類
-
-				while (1)
-				{
-					memset(aStr, NULL, sizeof aStr);					// 文字列を初期化
-					(void)fgets(aStr, sizeof aStr, pFile);				// メモ帳から一列取得
-					/*** コメント消去処理 ***/
-					if (DeleteComments(&aStr[0]))
-					{ // 取得後、最初の文字が#(コメントアウト宣言)だった場合、読み込まない
-						if (strstr(aStr, READ_TEXTYPE) != NULL)
-						{ // テクスチャの種類
-							pStart = strchr(aStr, '=');
-
-							/** テクスチャの種類の読み込み **/
-							(void)sscanf(pStart + 1, "%d", &nTexType);
-						}
-						else if (strstr(aStr, READ_POS) != NULL)
-						{ // 床の移動量
-							pStart = strchr(aStr, '=');
-
-							/** 床の移動量の読み込み **/
-							(void)sscanf(pStart + 1, "%d %d %d", &nPos.x, &nPos.y, &nPos.z);
-						}
-						else if (strstr(aStr, READ_SIZE) != NULL)
-						{ // 床のサイズ
-							pStart = strchr(aStr, '=');
-
-							/** 床のサイズの読み込み **/
-							(void)sscanf(pStart + 1, "%d %d", &nSize.x, &nSize.y);
-						}
-						else if (strstr(aStr, READ_ROT) != NULL)
-						{ // 床の角度
-							pStart = strchr(aStr, '=');
-
-							/** 床の角度の読み込み **/
-							(void)sscanf(pStart + 1, "%d %d %d", &nDegree.x, &nDegree.y, &nDegree.z);
-						}
-						else if (strstr(aStr, READ_BLOCK) != NULL)
-						{ // 床の拡大倍率
-							pStart = strchr(aStr, '=');
-
-							/** 床の拡大倍率の読み込み **/
-							(void)sscanf(pStart + 1, "%d %d", &nBlock.x, &nBlock.y);
-						}
-						else if (strstr(aStr, READ_SIZE) != NULL)
-						{ // 床のサイズ
-							pStart = strchr(aStr, '=');
-
-							/** 床のサイズの読み込み **/
-							(void)sscanf(pStart + 1, "%d %d", &nSize.x, &nSize.y);
-						}
-						else if (strstr(aStr, READ_CULL) != NULL)
-						{ // カリングタイプ設定
-							pStart = strchr(aStr, '=');
-
-							/** カリングタイプの読み込み **/
-							(void)sscanf(pStart + 1, "%d", &cullType);
-						}
-
-						/*** 床情報の終了 ***/
-						if (strstr(aStr, READ_ENDMESHFIELDSET) != NULL)
-						{ // 床情報の終了
-							if (nTexType < g_nTextureNum)
-							{ // テクスチャインデックス範囲内
-								pos = INTToFloat(nPos);			// 床の位置をfloatに変換
-
-								degree = INTToFloat(nDegree);	// 床の角度をfloatに変換
-								rot = DegreeToRadian(degree);	// 角度をRadianに変換
-
-								block = INTToFloat(nBlock);		// 床の拡大倍率のfloatに変換
-								size = INTToFloat(nSize);		// 床のサイズをfloatに変換
-
-								/** 床の設置 **/
-								SetMeshField(pos, rot, size.x, size.y, (int)block.x, (int)block.y, nTexType, cullType);
-							}
-							else
-							{ // テクスチャインデックス範囲外
-								// テクスチャの設定に失敗
-								GenerateMessageBox(MB_ICONERROR,
-									"Error (4)",
-									"%d番目の床のテクスチャ設定に失敗しました。",
-									nField);
-							}
-
-							break;
-						}
-					}
-				}
-			}
-			else if (strcmp(aStr, READ_WALLSET) == NULL)
-			{ // 壁情報
-				/** 設置共通関連 **/
-				INT_VECTOR3 nPos = INT_VECTOR3_NULL;		// float変換前の位置
-				D3DXVECTOR3 pos = D3DXVECTOR3_NULL;			// Xファイルの位置
-				INT_VECTOR3 nDegree = INT_VECTOR3_NULL;		// float変換前の角度
-				D3DXVECTOR3 degree = D3DXVECTOR3_NULL;		// 変換前の角度
-				D3DXVECTOR3 rot = D3DXVECTOR3_NULL;			// Xファイルの変換後角度
-
-				/** 壁、床設置関連 **/
-				INT_VECTOR3 nSize = INT_VECTOR3_NULL;	// 変換前サイズ
-				D3DXVECTOR3 size = D3DXVECTOR3_NULL;	// 大きさ
-				INT_VECTOR2 nBlock = INT_VECTOR2_NULL;	// 変換前分割数
-				D3DXVECTOR2 block = D3DXVECTOR2_NULL;	// 分割数
-				D3DXCOLOR col = D3DXCOLOR_NULL;			// 色
-				D3DCULL cullType = D3DCULL_CCW;			// カリングタイプ
-				int nTexType = 0;				// テクスチャの種類
-
-				while (1)
-				{
-					memset(aStr, NULL, sizeof aStr);					// 文字列を初期化
-					(void)fgets(aStr, sizeof aStr, pFile);				// メモ帳から一列取得
-					/*** コメント消去処理 ***/
-					if (DeleteComments(&aStr[0]))
-					{ // 取得後、最初の文字が#(コメントアウト宣言)だった場合、読み込まない
-						if (strstr(aStr, READ_TEXTYPE) != NULL)
-						{ // テクスチャの種類
-							pStart = strchr(aStr, '=');
-
-							/** テクスチャの種類の読み込み **/
-							(void)sscanf(pStart + 1, "%d", &nTexType);
-						}
-						else if (strstr(aStr, READ_POS) != NULL)
-						{ // 壁の位置
-							pStart = strchr(aStr, '=');
-
-							/** 壁の位置の読み込み **/
-							(void)sscanf(pStart + 1, "%d %d %d", &nPos.x, &nPos.y, &nPos.z);
-						}
-						else if (strstr(aStr, READ_ROT) != NULL)
-						{ // 壁の角度
-							pStart = strchr(aStr, '=');
-
-							/** 壁の角度の読み込み **/
-							(void)sscanf(pStart + 1, "%d %d %d", &nDegree.x, &nDegree.y, &nDegree.z);
-						}
-						else if (strstr(aStr, READ_COL) != NULL)
-						{ // 壁の角度
-							pStart = strchr(aStr, '=');
-
-							/** 壁の角度の読み込み **/
-							(void)sscanf(pStart + 1, "%f %f %f %f", &col.r, &col.g, &col.b, &col.a);
-						}
-						else if (strstr(aStr, READ_BLOCK) != NULL)
-						{ // 壁の拡大倍率
-							pStart = strchr(aStr, '=');
-
-							/** 壁の拡大倍率の読み込み **/
-							(void)sscanf(pStart + 1, "%d %d", &nBlock.x, &nBlock.y);
-						}
-						else if (strstr(aStr, READ_SIZE) != NULL)
-						{ // 壁のサイズ
-							pStart = strchr(aStr, '=');
-
-							/** 壁のサイズの読み込み **/
-							(void)sscanf(pStart + 1, "%d %d", &nSize.x, &nSize.y);
-						}
-						else if (strstr(aStr, READ_CULL) != NULL)
-						{ // カリングタイプ設定
-							pStart = strchr(aStr, '=');
-
-							/** カリングタイプの読み込み **/
-							(void)sscanf(pStart + 1, "%d", &cullType);
-						}
-
-						/*** 壁情報の終了 ***/
-						if (strstr(aStr, READ_ENDWALLSET) != NULL)
-						{ // 壁情報の終了
-							if (nTexType < g_nTextureNum)
-							{ // テクスチャインデックス範囲内
-								pos = INTToFloat(nPos);			 // 壁の位置をfloatに変換
-
-								degree = INTToFloat(nDegree);	 // 壁の角度をfloatに変換
-								rot = DegreeToRadian(degree);	 // 角度をRadianに変換
-
-								block = INTToFloat(nBlock);		 // 壁の拡大倍率のfloatに変換
-								size = INTToFloat(nSize);		 // 壁のサイズをfloatに変換
-
-								/** 壁の設置 **/
-								SetWall(pos, rot, size.x, size.y, nTexType, (int)block.x, (int)block.y, col, cullType);
-							}
-							else
-							{ // テクスチャインデックス範囲外
-								// テクスチャの設定に失敗
-								GenerateMessageBox(MB_ICONERROR,
-									"Error (5)",
-									"%d番目の壁のテクスチャ設定に失敗しました。",
-									nWall);
-							}
-
-							nWall++;
-
-							break;
-						}
-					}
-				}
-			}
-			else if (strcmp(aStr, READ_TREESET) == NULL)
-			{ // 木情報
-				/** 設置共通関連 **/
-				INT_VECTOR3 nPos = INT_VECTOR3_NULL;		// float変換前の位置
-				D3DXVECTOR3 pos = D3DXVECTOR3_NULL;			// Xファイルの位置
-				INT_VECTOR3 nDegree = INT_VECTOR3_NULL;		// float変換前の角度
-				D3DXVECTOR3 degree = D3DXVECTOR3_NULL;		// 変換前の角度
-				D3DXVECTOR3 rot = D3DXVECTOR3_NULL;			// Xファイルの変換後角度
-
-				/** 壁、床設置関連 **/
-				INT_VECTOR3 nSize = INT_VECTOR3_NULL;	// 変換前サイズ
-				D3DXVECTOR3 size = D3DXVECTOR3_NULL;	// 大きさ
-				INT_VECTOR2 nBlock = INT_VECTOR2_NULL;	// 変換前分割数
-				D3DXVECTOR2 block = D3DXVECTOR2_NULL;	// 分割数
-				D3DXCOLOR col = D3DXCOLOR_NULL;			// 色
-
-				int nTexAnimCnt = 0;		// テクスチャアニメーション数
-				int nZFunc = 0;				// Zテストを使うか(1以上 => TRUE)
-				bool bZFunc = false;		// Zテストを使うか
-				int nTexType = 0;				// テクスチャの種類
-
-				while (1)
-				{
-					memset(aStr, NULL, sizeof aStr);					// 文字列を初期化
-					(void)fgets(aStr, sizeof aStr, pFile);				// メモ帳から一列取得
-					/*** コメント消去処理 ***/
-					if (DeleteComments(&aStr[0]))
-					{ // 取得後、最初の文字が#(コメントアウト宣言)だった場合、読み込まない
-						if (strstr(aStr, READ_TEXTYPE) != NULL)
-						{ // テクスチャの種類
-							pStart = strchr(aStr, '=');
-
-							/** テクスチャの種類の読み込み **/
-							(void)sscanf(pStart + 1, "%d", &nTexType);
-						}
-						else if (strstr(aStr, READ_POS) != NULL)
-						{ // 木の位置
-							pStart = strchr(aStr, '=');
-
-							/** 床の移動量の読み込み **/
-							(void)sscanf(pStart + 1, "%d %d %d", &nPos.x, &nPos.y, &nPos.z);
-						}
-						else if (strstr(aStr, READ_SIZE) != NULL)
-						{ // 木の位置
-							pStart = strchr(aStr, '=');
-
-							/** 床の移動量の読み込み **/
-							(void)sscanf(pStart + 1, "%d %d", &nSize.x, &nSize.y);
-						}
-						else if (strstr(aStr, READ_ZFUNC) != NULL)
-						{ // 木のZテストの有無
-							pStart = strchr(aStr, '=');
-
-							/** 床のサイズの読み込み **/
-							(void)sscanf(pStart + 1, "%d", &nZFunc);
-						}
-
-						/*** 木情報の終了 ***/
-						if (strstr(aStr, READ_ENDTREESET) != NULL)
-						{ // 木情報の終了
-							if (nTexType < g_nTextureNum)
-							{ // テクスチャインデックス範囲内
-								pos = INTToFloat(nPos);			// 木の位置をfloatに変換
-								size = INTToFloat(nSize);		// 木の大きさをfloatに変換
-
-								/*** Zテスト判定 ***/
-								if (nZFunc >= 1)
-								{
-									bZFunc = true;
-								}
-
-								/** 木の設置 **/
-								SetTree(pos, size.x, size.y, nTexType, bZFunc);
-							}
-							else
-							{ // テクスチャインデックス範囲外
-								 // テクスチャの設定に失敗
-								GenerateMessageBox(MB_ICONERROR,
-									"Error (6)",
-									"%d番目の木のテクスチャ設定に失敗しました。",
-									nTree);
-							}
-
-							/*** 変数の初期化 ***/
-							nTexType = 0;
-							pos = D3DXVECTOR3_NULL;
-							nPos = INT_VECTOR3_NULL;
-							nSize = INT_VECTOR3_NULL;
-							size = D3DXVECTOR3_NULL;
-							bZFunc = false;
-
-							nTree++;
-
-							break;
-						}
-					}
-				}
-			}
-			else if (strstr(aStr, READ_EFFECTSET) != NULL)
-			{ // エフェクト情報
-				int nTexType = 0;				// テクスチャの種類
-
-				while (1)
-				{
-					memset(aStr, NULL, sizeof aStr);					// 文字列を初期化
-					(void)fgets(aStr, sizeof aStr, pFile);				// メモ帳から一列取得
-					/*** コメント消去処理 ***/
-					if (DeleteComments(&aStr[0]))
-					{ // 取得後、最初の文字が#(コメントアウト宣言)だった場合、読み込まない
-						if (strstr(aStr, READ_TEXTYPE) != NULL)
-						{ // テクスチャの種類
-							pStart = strchr(aStr, '=');
-
-							/** テクスチャの種類の読み込み **/
-							(void)sscanf(pStart + 1, "%d", &nTexType);
-						}
-
-						/*** エフェクト情報の終了 ***/
-						if (strstr(aStr, READ_ENDEFFECTSET) != NULL)
-						{ // エフェクト情報の終了
-							if (nTexType < g_nTextureNum)
-							{ // テクスチャインデックス範囲内
-								/** エフェクトの設定 **/
-								SetIndexTextureEffect(nTexType);
-							}
-							else
-							{ // テクスチャインデックス範囲外
-								 // テクスチャの設定に失敗
-								GenerateMessageBox(MB_ICONERROR,
-									"Error (7)",
-									"エフェクトのテクスチャ設定に失敗しました。");
-							}
-
-							/*** 変数の初期化 ***/
-							nTexType = 0;
-
-							break;
-						}
-					}
-				}
-			}
-			else if (strstr(aStr, READ_SHADOWSET) != NULL)
-			{ // 影情報
-				int nTexType = 0;				// テクスチャの種類
-
-				while (1)
-				{
-					memset(aStr, NULL, sizeof(aStr));					// 文字列を初期化
-					(void)fgets(aStr, sizeof(aStr), pFile);				// メモ帳から一列取得
-					/*** コメント消去処理 ***/
-					if (DeleteComments(&aStr[0]))
-					{ // 取得後、最初の文字が#(コメントアウト宣言)だった場合、読み込まない
-						if (strstr(aStr, READ_TEXTYPE) != NULL)
-						{ // テクスチャの種類
-							pStart = strchr(aStr, '=');
-
-							/** テクスチャの種類の読み込み **/
-							(void)sscanf(pStart + 1, "%d", &nTexType);
-						}
-
-						/*** 影情報の終了 ***/
-						if (strstr(aStr, READ_ENDSHADOWSET) != NULL)
-						{ // 影情報の終了
-							if (nTexType < g_nTextureNum)
-							{ // テクスチャインデックス範囲内
-								/** 影の設定 **/
-								SetIndexTextureShadow(nTexType);
-							}
-							else
-							{ // テクスチャインデックス範囲外
-								 // テクスチャの設定に失敗
-								GenerateMessageBox(MB_ICONERROR,
-									"Error (8)",
-									"影のテクスチャ設定に失敗しました。");
-							}
-
-							/*** 変数の初期化 ***/
-							nTexType = 0;
-
-							break;
-						}
-					}
-				}
-			}
-			else if (strstr(aStr, READ_BULLETSET) != NULL)
-			{ // 弾情報
-				int nTexType = 0;				// テクスチャの種類
-
-				while (1)
-				{
-					memset(aStr, NULL, sizeof(aStr));					// 文字列を初期化
-					(void)fgets(aStr, sizeof(aStr), pFile);				// メモ帳から一列取得
-					/*** コメント消去処理 ***/
-					if (DeleteComments(&aStr[0]))
-					{ // 取得後、最初の文字が#(コメントアウト宣言)だった場合、読み込まない
-						if (strstr(aStr, READ_TEXTYPE) != NULL)
-						{ // テクスチャの種類
-							pStart = strchr(aStr, '=');
-
-							/** テクスチャの種類の読み込み **/
-							(void)sscanf(pStart + 1, "%d", &nTexType);
-						}
-
-						/*** 弾情報の終了 ***/
-						if (strstr(aStr, READ_ENDBULLETSET) != NULL)
-						{ // 弾情報の終了
-							if (nTexType < g_nTextureNum)
-							{ // テクスチャインデックス範囲内
-								/** 弾の設定 **/
-								SetIndexTextureBullet(nTexType);
-							}
-							else
-							{ // テクスチャインデックス範囲外
-								 // テクスチャの設定に失敗
-								GenerateMessageBox(MB_ICONERROR,
-									"Error (9)",
-									"弾のテクスチャ設定に失敗しました。");
-							}
-
-							/*** 変数の初期化 ***/
-							nTexType = 0;
-
-							break;
-						}
-					}
-				}
-			}
-			else if (strstr(aStr, READ_EXPLOSIONSET) != NULL)
-			{ // 爆発情報
-				int nTexType = 0;				// テクスチャの種類
-				int nTexAnimCnt = 0;		// テクスチャアニメーション数
-
-				while (1)
-				{
-					memset(aStr, NULL, sizeof(aStr));					// 文字列を初期化
-					(void)fgets(aStr, sizeof(aStr), pFile);				// メモ帳から一列取得
-					/*** コメント消去処理 ***/
-					if (DeleteComments(&aStr[0]))
-					{ // 取得後、最初の文字が#(コメントアウト宣言)だった場合、読み込まない
-						if (strstr(aStr, READ_TEXTYPE) != NULL)
-						{ // テクスチャの種類
-							pStart = strchr(aStr, '=');
-
-							/** テクスチャの種類の読み込み **/
-							(void)sscanf(pStart + 1, "%d", &nTexType);
-						}
-						else if (strstr(aStr, READ_TEXTURECOUNT) != NULL)
-						{ // テクスチャアニメーション数
-							pStart = strchr(aStr, '=');
-
-							/** テクスチャの種類の読み込み **/
-							(void)sscanf(pStart + 1, "%d", &nTexAnimCnt);
-						}
-
-						/*** 爆発情報の終了 ***/
-						if (strstr(aStr, READ_ENDEXPLOSIONSET) != NULL)
-						{ // 爆発情報の終了
-							if (nTexType < g_nTextureNum)
-							{ // テクスチャインデックス範囲内
-								/** 爆発情報の設定 **/
-								SetIndexTextureExplosion(nTexType, nTexAnimCnt);
-							}
-							else
-							{ // テクスチャインデックス範囲外
-								 // テクスチャの設定に失敗
-								GenerateMessageBox(MB_ICONERROR,
-									"Error (10)",
-									"爆発のテクスチャ設定に失敗しました。");
-							}
-
-							/*** 変数の初期化 ***/
-							nTexType = 0;
-							nTexAnimCnt = 0;
-
-							break;
-						}
-					}
-				}
-			}
-			else if (strstr(aStr, "END_SCRIPT") != NULL)
-			{ // 読み込み終了の合図
-				break;
-			}
+		bool bValid = ReadScriptLine(&reader);		// 有効な行か
+		if (reader.bEof) break;						// EOFの場合、読み込み終了
+		if (bValid == false) continue;				// コメント行・空行は読み飛ばし
+
+		const char *pLine = reader.aLine;			// 読み込んだ行
+
+		// ※ strstr による部分一致判定のため、判定の順番を変えないこと
+		if (strstr(pLine, READ_TEXTURENUM) != NULL)
+		{ // 読み込むテクスチャ数 (上限を超えたら制限)
+			(void)sscanf(GetValue(pLine), "%d", &g_nTextureNum);
+			if (g_nTextureNum > MAX_TEXTURE) g_nTextureNum = MAX_TEXTURE;
+		}
+		else if (strstr(pLine, READ_TEXTUREPATH) != NULL && nCntTexture < g_nTextureNum)
+		{ // テクスチャパス (読み込む数分のみ)
+			ReadTexturePath(&reader, nCntTexture);
+			nCntTexture++;
+		}
+		else if (strstr(pLine, READ_MODELNUM) != NULL)
+		{ // 読み込むモデル数 (上限を超えたら制限)
+			(void)sscanf(GetValue(pLine), "%d", &g_nModelNum);
+			if (g_nModelNum > MAX_MODEL) g_nModelNum = MAX_MODEL;
+		}
+		else if (strstr(pLine, READ_MODELPATH) != NULL && nCntModel < g_nModelNum)
+		{ // モデルパス (読み込む数分のみ)
+			ReadModelPath(&reader, nCntModel);
+			nCntModel++;
+		}
+		else if (strcmp(pLine, READ_CAMERASET) == 0)
+		{ // カメラ
+			ReadCameraSet(&reader);
+		}
+		else if (strcmp(pLine, READ_ORNAMENTSET) == 0)
+		{ // オーナメントの種類情報
+			ReadOrnamentSet(&reader);
+		}
+		else if (strcmp(pLine, READ_MODELSET) == 0 && nCntSetModel < MAX_MODEL)
+		{ // モデルの設置
+			ReadModelSet(&reader, nCntSetModel);
+			nCntSetModel++;
+		}
+		else if (strcmp(pLine, READ_XMASTREESET) == 0 && nCntSetModel < MAX_MODEL)
+		{ // クリスマスツリーの設置
+			ReadXmasTreeSet(&reader, nCntSetModel);
+			nCntSetModel++;
+		}
+		else if (strcmp(pLine, READ_FIELDSET) == 0)
+		{ // 床の設置
+			ReadFieldSet(&reader, nCntField);
+			nCntField++;
+		}
+		else if (strcmp(pLine, READ_MESHFIELDSET) == 0)
+		{ // メッシュフィールドの設置 (エラー表示用の番号は床と共有)
+			ReadMeshFieldSet(&reader, nCntField);
+		}
+		else if (strcmp(pLine, READ_WALLSET) == 0)
+		{ // 壁の設置
+			ReadWallSet(&reader, nCntWall);
+			nCntWall++;
+		}
+		else if (strcmp(pLine, READ_TREESET) == 0)
+		{ // 木(ビルボード) : 現在は未使用のため読み飛ばす
+			SkipScriptBlock(&reader, READ_ENDTREESET);
+		}
+		else if (strstr(pLine, READ_EFFECTSET) != NULL)
+		{ // エフェクトのテクスチャ
+			ReadTextureIndexSet(&reader, READ_ENDEFFECTSET, SetIndexTextureEffect,
+				"Error (7)", "エフェクトのテクスチャ設定に失敗しました。");
+		}
+		else if (strstr(pLine, READ_SHADOWSET) != NULL)
+		{ // 影のテクスチャ
+			ReadTextureIndexSet(&reader, READ_ENDSHADOWSET, SetIndexTextureShadow,
+				"Error (8)", "影のテクスチャ設定に失敗しました。");
+		}
+		else if (strstr(pLine, READ_BULLETSET) != NULL)
+		{ // 弾 : 現在は未使用のため読み飛ばす
+			SkipScriptBlock(&reader, READ_ENDBULLETSET);
+		}
+		else if (strstr(pLine, READ_EXPLOSIONSET) != NULL)
+		{ // 爆発 : 現在は未使用のため読み飛ばす
+			SkipScriptBlock(&reader, READ_ENDEXPLOSIONSET);
+		}
+		else if (strstr(pLine, READ_ENDSCRIPT) != NULL)
+		{ // 読み込み終了の合図
+			break;
 		}
 	}
 
 	/*** 読み込み終了 ***/
-	fclose(pFile);
+	fclose(reader.pFile);
 
-	/*** 読み込み成功 ***/
 	return S_OK;
 }
 
-//================================================================================================================
+//==================================================================================
 // --- モーションスクリプトの読み込み ---
-//================================================================================================================
-HRESULT LoadMotion(_In_ const char* pMotionFileName)
+//==================================================================================
+HRESULT LoadMotion(_In_ const char *pMotionFileName)
 {
-	/*** デバイスの取得 ***/
-	LPDIRECT3DDEVICE9 pDevice = GetDevice();
-	HWND hWnd = GetHandleWindow();
-	if (hWnd == NULL)
-	{ // ハンドル有無確認
+	if (GetHandleWindow() == NULL)
+	{ // ウィンドウ未生成
 		return E_FAIL;
 	}
 
-	/** スクリプト読み込み関連 **/
-	FILE* pFile = NULL;				// ファイルポインタ
-	HRESULT hr = E_FAIL;			// ファイルの読み込み確認処理
-	char aStr[MAX_PATH] = {};		// Xファイルのファイル名
-	char aModelPath[MAX_PATH] = {};	// Xファイルパス
-	char* PosTrash;					// ゴミ捨て場(コメント消去用変数)
-	char* pStart;					// 値の開始位置
-	const char* pNull = "\0";		// 何もなし
-	char aErrorText[MAX_PATH] = {};	// エラー文用
+	SCRIPT_READER reader = {};		// スクリプト読み込み状態
+	MOTION_LOADER loader = {};		// モーション読み込み状態
 
-	int nModel = 0;					// 設置したモデル数
-	int nLoadModelPath = 0;			// 読み込んだモデル数
-	int aIdxObject[30] = {};		// 読み込んだモデルパスのオブジェクトでのインデックス
-	int nIndexModel = 0;			// 読み込んだモデルのインデックス
-	int nTypeModel = 1;				// 読み込んだモデルのタイプ
-	int nParts = 0;					// 読み込んだパーツ情報
-	int nIdxHead = 0;				// 頭
-	int nIdxHand = 0;				// 手
+	loader.mode = GetModeNext();				// Init中のモードを取得
+	loader.motionType = MOTIONTYPE_NEUTRAL;		// 最初のモーションはニュートラル
 
-	/*** モーション変数 ***/
-	int nNumParts = 0;						// パーツ総数
-	int nLoop = 0;							// ループの有無
-	int nKeySet = 0;						// 現在設定中のキー情報
-	int nKey = 0;							// 現在設定中のキー
-	bool bLoop = false;						// キャスト用
-	float fRadius = 0.0f;					// 半径
-	float fHeight = 0.0f;					// 高さ
-	float fMove = 0.0f;						// 移動量
-	float fJump = 0.0f;						// 跳躍力
-	PartsInfo pInfo = {};					// パーツ情報
-	MOTIONTYPE mType = MOTIONTYPE_NEUTRAL;	// モーションタイプ
-	int nType = MOTIONTYPE_NEUTRAL;			// 現在設定中のモーションタイプ(キャスト及び判定用)
-
-	ZeroMemory(&g_mInfo, sizeof(MOTION_INFO));
+	ZeroMemory(&g_motionInfo, sizeof(MOTION_INFO));
 
 	/*** ファイルオープン ***/
-	pFile = fopen(pMotionFileName, "r");
-	if (pFile == NULL)
+	reader.pFile = fopen(pMotionFileName, "r");
+	if (reader.pFile == NULL)
 	{ // ファイルオープン失敗時
-		GenerateMessageBox(MB_ICONERROR,
-			"Error (0)",
-			"Scriptファイルの読み込みに失敗しました。");
+		GenerateMessageBox(MB_ICONERROR, "Error (0)", "Scriptファイルの読み込みに失敗しました。");
 		return E_FAIL;
 	}
 
-	/*** SCRIPT確認 ***/
-	while (1)
+	/*** SCRIPT の行まで読み飛ばす ***/
+	if (FAILED(SeekScriptStart(&reader)))
 	{
-		memset(aStr, NULL, sizeof(aStr));					// 文字列を初期化
-		(void)fgets(aStr, sizeof(aStr), pFile);				// メモ帳から一列取得
-		/*** コメント消去処理 ***/
-		if (DeleteComments(&aStr[0]))
-		{
-			if (strcmp(aStr, "SCRIPT") == NULL)
-			{ // SCRIPT発見時読み込み開始
-				break;
-			}
-			else if (feof(pFile) != NULL)
-			{ // 発見できなかった場合読み込み終了 E_FAIL
-				GenerateMessageBox(MB_ICONERROR,
-					"Error (1)",
-					"Scriptの読み込み開始位置が指定されていません。");
-
-				/*** 読み込み終了 ***/
-				fclose(pFile);
-
-				return E_FAIL;
-			}
-		}
+		fclose(reader.pFile);
+		return E_FAIL;
 	}
 
-	/*** 読み込みループ処理 ***/
+	/*** END_SCRIPT まで1行ずつ解釈 ***/
+	// ※ 各 Read 関数が E_FAIL を返した時点で、エラー表示とファイルクローズは済んでいる
 	while (1)
 	{
-		memset(aStr, NULL, sizeof(aStr));					// 文字列を初期化
-		(void)fgets(aStr, sizeof(aStr), pFile);				// メモ帳から一列取得
+		HRESULT hr = ReadMotionLine(&reader);		// 1行読み込み
+		if (FAILED(hr)) return E_FAIL;				// 終了位置の前にEOF
+		if (hr == S_FALSE) continue;				// コメント行・空行は読み飛ばし
 
-		if (feof(pFile) != 0)
-		{
-			GenerateMessageBox(MB_ICONERROR,
-				"Error (2)",
-				"読み込みが異常終了しました。");
+		const char *pLine = reader.aLine;			// 読み込んだ行
 
-			/*** 読み込み終了 ***/
-			fclose(pFile);
-
-			return E_FAIL;				// もし取得後EOFの場合、読み込み終了
+		if (strstr(pLine, READ_ENDSCRIPT) != NULL)
+		{ // 読み込み終了の合図
+			break;
 		}
-
-		/*** コメント消去処理 ***/
-		if (DeleteComments(&aStr[0]))
-		{ // 取得後、最初の文字が#(コメントアウト宣言)だった場合、読み込まない
-			/*** END_SCRIPTか確認 ***/
-			if (strstr(aStr, "END_SCRIPT") != NULL)
-			{ // 読み込み終了の合図
-				break;
-			}
-			else if (strstr(aStr, READ_MODELNUM) != NULL)
-			{
-				pStart = strchr(aStr, '=');
-
-				/** パーツ数の読み込み **/
-				(void)sscanf(pStart + 1, "%d", &nModel);
-			}
-			else if (strstr(aStr, READ_MODELPATH) != NULL)
-			{
-				/** モデルパス初期化 **/
-				memset(&aModelPath[0], NULL, sizeof(char) * MAX_PATH);
-
-				/** インデックスを初期化 **/
-				aIdxObject[nLoadModelPath] = -1;
-
-				pStart = strchr(aStr, '=');
-
-				/** Xファイル名の読み込み **/
-				(void)sscanf(pStart + 1, "%s", &aModelPath[0]);
-
-				/** 過去に読み込んだファイル名と重複していないか確認 **/
-				for (int nCntModelNum = 0; nCntModelNum < g_nModelNum; nCntModelNum++)
-				{
-					if (strcmp(&aModelPath[0], &g_aXFileName[nCntModelNum][0]) == NULL)
-					{ // 重複していたら
-						aIdxObject[nLoadModelPath] = nCntModelNum;		// その番号を指定
-						break;
-					}
-				}
-
-				if (aIdxObject[nLoadModelPath] == -1)
-				{ // 過去に読み込んでいないモデルだった場合
-					hr = LoadObject(&aModelPath[0]);	// 新規でそのモデルを読み込み
-					aIdxObject[nLoadModelPath] = g_nModelNum;		// インデックスを指定
-					g_nModelNum++;						// 総モデル数を増加
-					nLoadModelPath++;
-				}
-			}
-			else if (strstr(aStr, READ_CHARACTER) != NULL)
-			{
-				while (1)
-				{
-					memset(aStr, NULL, sizeof(aStr));					// 文字列を初期化
-					(void)fgets(aStr, sizeof(aStr), pFile);				// メモ帳から一列取得
-
-					if (feof(pFile) != 0)
-					{
-						GenerateMessageBox(MB_ICONERROR,
-							"Error (2)",
-							"読み込みが異常終了しました。");
-
-						/*** 読み込み終了 ***/
-						fclose(pFile);
-
-						return E_FAIL;				// もし取得後EOFの場合、読み込み終了
-					}
-
-					if (DeleteComments(&aStr[0]))
-					{
-						if (strstr(aStr, READ_ENDCHARACTER) != NULL)
-						{
-							SetPlayerSetting(fMove, fJump);
-							SetMotionPartsNum(nNumParts);
-							SetCollisionSize(fRadius, fHeight);
-							SetPlayerPartsIndices(nIdxHead, nIdxHand);
-
-							break;
-						}
-						else if (strstr(aStr, READ_PARTS) != NULL)
-						{
-							pStart = strchr(aStr, '=');
-
-							/** パーツ数の読み込み **/
-							(void)sscanf(pStart + 1, "%d", &nNumParts);
-						}
-						else if (strstr(aStr, READ_RADIUS) != NULL)
-						{
-							pStart = strchr(aStr, '=');
-
-							/** 当たり判定の半径の読み込み **/
-							(void)sscanf(pStart + 1, "%f", &fRadius);
-						}
-						else if (strstr(aStr, READ_HEIGHT) != NULL)
-						{
-							pStart = strchr(aStr, '=');
-
-							/** 当たり判定の高さの読み込み **/
-							(void)sscanf(pStart + 1, "%f", &fHeight);
-						}
-						else if (strstr(aStr, READ_MOVE) != NULL)
-						{
-							pStart = strchr(aStr, '=');
-
-							/** 移動量の読み込み **/
-							(void)sscanf(pStart + 1, "%f", &fMove);
-						}
-						else if (strstr(aStr, READ_JUMP) != NULL)
-						{
-							pStart = strchr(aStr, '=');
-
-							/** 跳躍力の読み込み **/
-							(void)sscanf(pStart + 1, "%f", &fJump);
-						}
-						else if (strstr(aStr, READ_HEAD) != NULL)
-						{
-							pStart = strchr(aStr, '=');
-
-							/** 頭のインデックスの読み込み **/
-							(void)sscanf(pStart + 1, "%d", &nIdxHead);
-						}
-						else if (strstr(aStr, READ_HAND) != NULL)
-						{
-							pStart = strchr(aStr, '=');
-
-							/** 手のインデックスの読み込み **/
-							(void)sscanf(pStart + 1, "%d", &nIdxHand);
-						}
-						else if (strstr(aStr, READ_PARTSSET) != NULL)
-						{
-							while (1)
-							{
-								memset(aStr, NULL, sizeof(aStr));					// 文字列を初期化
-								(void)fgets(aStr, sizeof(aStr), pFile);				// メモ帳から一列取得
-
-								if (feof(pFile) != 0)
-								{
-									GenerateMessageBox(MB_ICONERROR,
-										"Error (2)",
-										"読み込みが異常終了しました。");
-
-									/*** 読み込み終了 ***/
-									fclose(pFile);
-
-									return E_FAIL;				// もし取得後EOFの場合、読み込み終了
-								}
-
-								if (DeleteComments(&aStr[0]))
-								{
-									if (strstr(aStr, READ_ENDPARTSSET) != NULL)
-									{
-										LoadPartsPlayer(pInfo);
-										nParts++;
-										break;
-									}
-									else if (strstr(aStr, READ_INDEX) != NULL)
-									{
-										pStart = strchr(aStr, '=');
-
-										/** モデルインデックスの読み込み **/
-										(void)sscanf(pStart + 1, "%d",
-											&pInfo.nIdxModel);
-
-										/** モデルインデックスに対応した、オブジェクトインデックスの取得 **/
-										pInfo.nIdxObject = aIdxObject[pInfo.nIdxModel];
-									}
-									else if (strstr(aStr, READ_PARENT) != NULL)
-									{
-										pStart = strchr(aStr, '=');
-
-										/** 移動量の読み込み **/
-										(void)sscanf(pStart + 1, "%d",
-											&pInfo.nIdxModelParent);
-									}
-									else if (strstr(aStr, READ_POS) != NULL)
-									{
-										pStart = strchr(aStr, '=');
-
-										/** 移動量の読み込み **/
-										(void)sscanf(pStart + 1, "%f %f %f",
-											&pInfo.pos.x,
-											&pInfo.pos.y,
-											&pInfo.pos.z);
-									}
-									else if (strstr(aStr, READ_ROT) != NULL)
-									{
-										pStart = strchr(aStr, '=');
-
-										/** 移動量の読み込み **/
-										(void)sscanf(pStart + 1, "%f %f %f",
-											&pInfo.rot.x,
-											&pInfo.rot.y,
-											&pInfo.rot.z);
-									}
-								}
-							}
-						}
-
-					}
-				}
-			}
-			else if (strstr(aStr, READ_MOTIONSET) != NULL)
-			{
-				while (1)
-				{
-					memset(aStr, NULL, sizeof(aStr));					// 文字列を初期化
-					(void)fgets(aStr, sizeof(aStr), pFile);				// メモ帳から一列取得
-
-					if (feof(pFile) != 0)
-					{
-						GenerateMessageBox(MB_ICONERROR,
-							"Error (2)",
-							"読み込みが異常終了しました。");
-
-						/*** 読み込み終了 ***/
-						fclose(pFile);
-
-						return E_FAIL;				// もし取得後EOFの場合、読み込み終了
-					}
-
-					if (DeleteComments(&aStr[0]))
-					{
-						if (strstr(aStr, READ_ENDMOTIONSET) != NULL)
-						{
-							LoadMotionPlayer(&g_mInfo, mType);
-							ZeroMemory(&g_mInfo, sizeof(MOTION_INFO));
-							nKeySet = 0;
-							nType = mType;
-							nType++;
-							if (nType >= MOTIONTYPE_MAX)
-							{
-								nType = MOTIONTYPE_MAX - 1;
-							}
-
-							mType = (MOTIONTYPE)nType;
-
-							break;
-						}
-						else if (strstr(aStr, READ_LOOP) != NULL)
-						{
-							pStart = strchr(aStr, '=');
-
-							/** ループの読み込み **/
-							(void)sscanf(pStart + 1, "%d", &nLoop);
-
-							bLoop = (nLoop > 0) ? true : false;
-
-							g_mInfo.bLoop = bLoop;
-						}
-						else if (strstr(aStr, READ_NUMKEY) != NULL)
-						{
-							pStart = strchr(aStr, '=');
-
-							/** 移動量の読み込み **/
-							(void)sscanf(pStart + 1, "%d", &g_mInfo.nNumKey);
-						}
-						else if (strcmp(aStr, READ_KEYSET) == NULL)
-						{
-							while (1)
-							{
-								memset(aStr, NULL, sizeof(aStr));					// 文字列を初期化
-								(void)fgets(aStr, sizeof(aStr), pFile);				// メモ帳から一列取得
-
-								if (feof(pFile) != 0)
-								{
-									GenerateMessageBox(MB_ICONERROR,
-										"Error (2)",
-										"読み込みが異常終了しました。");
-
-									/*** 読み込み終了 ***/
-									fclose(pFile);
-
-									return E_FAIL;				// もし取得後EOFの場合、読み込み終了
-								}
-
-								if (DeleteComments(&aStr[0]))
-								{
-									if (strstr(aStr, READ_ENDKEYSET) != NULL)
-									{
-										nKeySet++;
-										nKey = 0;
-										break;
-									}
-									else if (strstr(aStr, READ_FRAME) != NULL)
-									{
-										pStart = strchr(aStr, '=');
-
-										/** 移動量の読み込み **/
-										(void)sscanf(pStart + 1, "%d", &g_mInfo.aKeyInfo[nKeySet].nFrame);
-									}
-									else if (strcmp(aStr, READ_KEY) == NULL)
-									{
-										while (1)
-										{
-											memset(aStr, NULL, sizeof(aStr));					// 文字列を初期化
-											(void)fgets(aStr, sizeof(aStr), pFile);				// メモ帳から一列取得
-
-											if (feof(pFile) != 0)
-											{
-												GenerateMessageBox(MB_ICONERROR,
-													"Error (2)",
-													"読み込みが異常終了しました。");
-
-												/*** 読み込み終了 ***/
-												fclose(pFile);
-
-												return E_FAIL;				// もし取得後EOFの場合、読み込み終了
-											}
-
-											if (DeleteComments(&aStr[0]))
-											{
-												if (strstr(aStr, READ_ENDKEY) != NULL)
-												{
-													nKey++;
-													break;
-												}
-												else if (strstr(aStr, READ_POS) != NULL)
-												{
-													pStart = strchr(aStr, '=');
-
-													/** 移動量の読み込み **/
-													(void)sscanf(pStart + 1, "%f %f %f",
-														&g_mInfo.aKeyInfo[nKeySet].aKey[nKey].fPosX,
-														&g_mInfo.aKeyInfo[nKeySet].aKey[nKey].fPosY,
-														&g_mInfo.aKeyInfo[nKeySet].aKey[nKey].fPosZ);
-												}
-												else if (strstr(aStr, READ_ROT) != NULL)
-												{
-													pStart = strchr(aStr, '=');
-
-													/** 移動量の読み込み **/
-													(void)sscanf(pStart + 1, "%f %f %f",
-														&g_mInfo.aKeyInfo[nKeySet].aKey[nKey].fRotX,
-														&g_mInfo.aKeyInfo[nKeySet].aKey[nKey].fRotY,
-														&g_mInfo.aKeyInfo[nKeySet].aKey[nKey].fRotZ);
-												}
-											}
-										}
-									}
-								}
-							}
-						}
-					}
-				}
-			}
+		else if (strstr(pLine, READ_MODELNUM) != NULL)
+		{ // モデル数 (READ_MODELPATH の数で判断するため、値は使用しない)
+		}
+		else if (strstr(pLine, READ_MODELPATH) != NULL)
+		{ // パーツのモデルパス
+			ReadMotionModelPath(&reader, &loader);
+		}
+		else if (strstr(pLine, READ_CHARACTER) != NULL)
+		{ // キャラクター(パーツ構成)情報
+			if (FAILED(ReadCharacterSet(&reader, &loader))) return E_FAIL;
+		}
+		else if (strstr(pLine, READ_MOTIONSET) != NULL)
+		{ // モーション情報
+			if (FAILED(ReadMotionSet(&reader, &loader))) return E_FAIL;
 		}
 	}
 
 	/*** 読み込み終了 ***/
-	fclose(pFile);
+	fclose(reader.pFile);
 
-	/*** 読み込み成功 ***/
 	return S_OK;
 }
 
-//================================================================================================================
-// --- コメントアウト関連消去処理 ---
-//================================================================================================================
-bool DeleteComments(char* aStr)
-{
-	char* PosTrash;					// ゴミ捨て場(コメント消去用変数)
-
-	/*** コメント消去処理 ***/
-	if (strncmp(aStr, "#", 1) != 0 && strncmp(aStr, "\n", 1) != 0)
-	{ // 取得後、最初の文字が#(コメントアウト宣言)だった場合、読み込まない
-		PosTrash = strstr(aStr, "\n");					// 改行がないか確認
-		if (PosTrash != NULL) strcpy(PosTrash, "");		// あれば消去
-
-		PosTrash = strstr(aStr, "#");					// 列の途中に#がないか確認
-		if (PosTrash != NULL) strcpy(PosTrash, "");		// あれば、それ以降の文字列を消去
-
-		PosTrash = strstr(aStr, "\t");					// タブスペースがないか確認
-		while (PosTrash != NULL)
-		{
-			if (PosTrash != NULL)
-			{
-				if (PosTrash[0] == aStr[0])
-				{
-					strcpy(aStr, &aStr[1]);
-					PosTrash = &PosTrash[1];				// あれば消去
-				}
-				else
-				{
-					strncpy(PosTrash, "", sizeof(char));	// あれば消去
-				}
-			}
-
-			PosTrash = strstr(aStr, "\t");					// タブスペースがないか確認
-		}
-
-		/*** 読み込み開始 ***/
-		return true;
-	}
-	else
-	{
-		/*** 読み込み終了***/
-		return false;
-	}
-}
-
-//================================================================================================================
+//==================================================================================
 // --- 読み込んだテクスチャの終了処理 ---
-//================================================================================================================
+//==================================================================================
 void UninitScript(void)
 {
-	/*** テクスチャの破棄 ***/
-	for (int nCntScript = 0; nCntScript < MAX_TEXTURE; nCntScript++)
-	{
-		if (g_apTextureModel[nCntScript] != NULL)
-		{
-			g_apTextureModel[nCntScript]->Release();
-			g_apTextureModel[nCntScript] = NULL;
-		}
-	}
+	ReleaseScriptTexture();
 }
 
-//================================================================================================================
+//==================================================================================
 // --- 読み込んだテクスチャの取得 ---
-//================================================================================================================
+//==================================================================================
 LPDIRECT3DTEXTURE9 GetTexture(_In_ int nIndexTexture)
 {
 	if (FAILED(CheckIndex(g_nTextureNum, nIndexTexture)))
-	{ // インデックス
+	{ // インデックス範囲外
 		return NULL;
 	}
 
 	return g_apTextureModel[nIndexTexture];
+}
+
+//==================================================================================
+//
+// ここから共通の内部処理
+//
+//==================================================================================
+
+//==================================================================================
+// --- 読み込んだテクスチャの全破棄 ---
+//==================================================================================
+static void ReleaseScriptTexture(void)
+{
+	for (int nCntTexture = 0; nCntTexture < MAX_TEXTURE; nCntTexture++)
+	{
+		RELEASE(g_apTextureModel[nCntTexture]);
+	}
+}
+
+//==================================================================================
+// --- コメントアウト関連消去処理 ---
+// 戻り値 : true = 読み込む行 / false = コメント行・空行
+//==================================================================================
+static bool DeleteComments(char *pLine)
+{
+	if (pLine[0] == '#' || pLine[0] == '\n')
+	{ // 行頭が # (コメントアウト) or 空行の場合、読み込まない
+		return false;
+	}
+
+	char *pFound = NULL;		// 検索した文字の位置
+
+	/*** 改行を消去 ***/
+	pFound = strchr(pLine, '\n');
+	if (pFound != NULL) *pFound = '\0';
+
+	/*** 行の途中の # 以降を消去 ***/
+	pFound = strchr(pLine, '#');
+	if (pFound != NULL) *pFound = '\0';
+
+	/*** 行頭のタブを詰める ***/
+	while (pLine[0] == '\t')
+	{
+		memmove(&pLine[0], &pLine[1], strlen(pLine));	// 終端文字ごと1文字詰める
+	}
+
+	/*** 行の途中のタブ以降を消去 ***/
+	pFound = strchr(pLine, '\t');
+	if (pFound != NULL) *pFound = '\0';
+
+	return true;
+}
+
+//==================================================================================
+// --- 1行読み込み (コメントを除去して pReader->aLine に格納) ---
+// 戻り値 : true = 読み込む行 / false = コメント行・空行
+//==================================================================================
+static bool ReadScriptLine(SCRIPT_READER *pReader)
+{
+	memset(pReader->aLine, 0, sizeof pReader->aLine);
+	(void)fgets(pReader->aLine, sizeof pReader->aLine, pReader->pFile);
+	pReader->bEof = (feof(pReader->pFile) != 0);
+
+	return DeleteComments(pReader->aLine);
+}
+
+//==================================================================================
+// --- "項目 = 値" の値部分の先頭を取得 ( = が無ければ空文字列) ---
+//==================================================================================
+static const char *GetValue(const char *pLine)
+{
+	const char *pEqual = strchr(pLine, '=');		// = の位置
+	if (pEqual == NULL)
+	{
+		return "";
+	}
+
+	return pEqual + 1;
+}
+
+//==================================================================================
+// --- SCRIPT の行まで読み飛ばす ---
+//==================================================================================
+static HRESULT SeekScriptStart(SCRIPT_READER *pReader)
+{
+	while (1)
+	{
+		bool bValid = ReadScriptLine(pReader);		// 有効な行か
+
+		if (bValid && strcmp(pReader->aLine, READ_SCRIPT) == 0)
+		{ // SCRIPT 発見時、読み込み開始
+			return S_OK;
+		}
+
+		if (pReader->bEof)
+		{ // 発見できなかった場合
+			GenerateMessageBox(MB_ICONERROR, "Error (1)", "Scriptの読み込み開始位置が指定されていません。");
+			return E_FAIL;
+		}
+	}
+}
+
+//==================================================================================
+//
+// ここから InitScript 用の内部処理
+// 各 ReadXxxSet は END_XXX の行(またはEOF)まで読み進めてから戻る
+//
+//==================================================================================
+
+//==================================================================================
+// --- テクスチャパスの読み取り及びテクスチャロード ---
+//==================================================================================
+static void ReadTexturePath(SCRIPT_READER *pReader, int nCntTexture)
+{
+	LPDIRECT3DDEVICE9 pDevice = GetDevice();				// デバイス
+	char *pFileName = g_aTextureFileName[nCntTexture];		// 格納先のテクスチャパス
+
+	/*** テクスチャパスの読み取り ***/
+	memset(pFileName, 0, MAX_PATH);
+	(void)sscanf(GetValue(pReader->aLine), "%s", pFileName);
+	CheckPath(pFileName);
+
+	/*** テクスチャの読み込み ***/
+	if (FAILED(D3DXCreateTextureFromFile(pDevice, pFileName, &g_apTextureModel[nCntTexture])))
+	{ // テクスチャの読み込み失敗時
+		GenerateMessageBox(MB_ICONERROR, "Error (1)", "%d番目のテクスチャの読み込みに失敗しました。", nCntTexture);
+	}
+}
+
+//==================================================================================
+// --- モデルパスの読み取り及びモデルロード ---
+//==================================================================================
+static void ReadModelPath(SCRIPT_READER *pReader, int nCntModel)
+{
+	char *pFileName = g_aXFileName[nCntModel];		// 格納先のモデルパス
+
+	/*** モデルパスの読み取り ***/
+	memset(pFileName, 0, MAX_PATH);
+	(void)sscanf(GetValue(pReader->aLine), "%s", pFileName);
+
+	/*** モデルの読み込み ***/
+	if (FAILED(LoadObject(pFileName)))
+	{ // モデルの読み込みに失敗
+		GenerateMessageBox(MB_ICONERROR, "Error (2)", "%d番目のモデルの読み込みに失敗しました。", nCntModel);
+	}
+}
+
+//==================================================================================
+// --- CAMERASET ～ END_CAMERASET の読み込み及びカメラの設置 ---
+//==================================================================================
+static void ReadCameraSet(SCRIPT_READER *pReader)
+{
+	INT_VECTOR3 nPosV = INT_VECTOR3_NULL;		// 視点位置(整数)
+	INT_VECTOR3 nPosR = INT_VECTOR3_NULL;		// 注視点位置(整数)
+	int nZLength = 0;							// 注視点との距離(整数)
+	int nViewAngle = 0;							// 視野角(整数)
+	int nZNear = 0;								// 描画開始距離(整数)
+	int nZFar = 0;								// 描画終了距離(整数)
+	float fRotSpd = 0.0f;						// 回転速度
+	float fSpd = 0.0f;							// 移動速度
+
+	while (1)
+	{
+		if (ReadScriptLine(pReader))
+		{ // 有効な行
+			const char *pLine = pReader->aLine;		// 読み込んだ行
+
+			if (strstr(pLine, READ_POSV) != NULL)			(void)sscanf(GetValue(pLine), "%d %d %d", &nPosV.x, &nPosV.y, &nPosV.z);
+			else if (strstr(pLine, READ_POSR) != NULL)		(void)sscanf(GetValue(pLine), "%d %d %d", &nPosR.x, &nPosR.y, &nPosR.z);
+			else if (strstr(pLine, READ_ZLENGTH) != NULL)	(void)sscanf(GetValue(pLine), "%d", &nZLength);
+			else if (strstr(pLine, READ_VANGLE) != NULL)	(void)sscanf(GetValue(pLine), "%d", &nViewAngle);
+			else if (strstr(pLine, READ_ZN) != NULL)		(void)sscanf(GetValue(pLine), "%d", &nZNear);
+			else if (strstr(pLine, READ_ZF) != NULL)		(void)sscanf(GetValue(pLine), "%d", &nZFar);
+			else if (strstr(pLine, READ_SPD) != NULL)		(void)sscanf(GetValue(pLine), "%f", &fSpd);
+			else if (strstr(pLine, READ_ROTSPD) != NULL)	(void)sscanf(GetValue(pLine), "%f", &fRotSpd);
+
+			if (strstr(pLine, READ_ENDCAMERASET) != NULL)
+			{ // カメラ情報の終了 → 設置
+				SetCamera(INTToFloat(nPosV),
+					INTToFloat(nPosR),
+					(float)nViewAngle,
+					(float)nZNear,
+					(float)nZFar,
+					(float)nZLength,
+					fSpd,
+					fRotSpd);
+				return;
+			}
+		}
+
+		if (pReader->bEof) return;		// 終了位置が無いままEOF
+	}
+}
+
+//==================================================================================
+// --- ORNAMENTSET ～ END_ORNAMENTSET の読み込み及びオーナメント情報の登録 ---
+//==================================================================================
+static void ReadOrnamentSet(SCRIPT_READER *pReader)
+{
+	int nNumOrnament = -1;		// 登録するオーナメント数
+	int nCntOrnament = 0;		// 登録したオーナメント数
+
+	while (1)
+	{
+		if (ReadScriptLine(pReader))
+		{ // 有効な行
+			const char *pLine = pReader->aLine;		// 読み込んだ行
+
+			if (strstr(pLine, READ_NUMORNAMENT) != NULL)
+			{ // 登録数
+				(void)sscanf(GetValue(pLine), "%d", &nNumOrnament);
+			}
+			else if (strcmp(pLine, READ_ORNAMENT) == 0 && nCntOrnament < nNumOrnament)
+			{ // ORNAMENT ～ END_ORNAMENT : 1種類分の情報
+				int nOrnamentType = -1;		// オーナメントの種類(ISSTAR)
+				int nModelType = -1;		// モデル番号
+				float fRadius = 0.0f;		// 当たり判定の半径
+				float fWeight = 0.0f;		// 重さ
+
+				while (1)
+				{
+					if (ReadScriptLine(pReader))
+					{
+						pLine = pReader->aLine;
+
+						if (strstr(pLine, READ_TYPE) != NULL)			(void)sscanf(GetValue(pLine), "%d", &nModelType);
+						else if (strstr(pLine, READ_ISSTAR) != NULL)	(void)sscanf(GetValue(pLine), "%d", &nOrnamentType);
+						else if (strstr(pLine, READ_RADIUS) != NULL)	(void)sscanf(GetValue(pLine), "%f", &fRadius);
+						else if (strstr(pLine, READ_WEIGHT) != NULL)	(void)sscanf(GetValue(pLine), "%f", &fWeight);
+						else if (strstr(pLine, READ_ENDORNAMENT) != NULL)
+						{ // オーナメント情報の登録
+							SettingOrnamentInfo(nOrnamentType, nModelType, fRadius, fWeight);
+							nCntOrnament++;
+							break;
+						}
+					}
+
+					if (pReader->bEof) return;		// 終了位置が無いままEOF
+				}
+			}
+			else if (strcmp(pLine, READ_ENDORNAMENTSET) == 0)
+			{ // オーナメント情報の終了
+				return;
+			}
+		}
+
+		if (pReader->bEof) return;		// 終了位置が無いままEOF
+	}
+}
+
+//==================================================================================
+// --- MODELSET ～ END_MODELSET の読み込み及びモデルの設置 ---
+//==================================================================================
+static void ReadModelSet(SCRIPT_READER *pReader, int nCntModel)
+{
+	INT_VECTOR3 nPos = INT_VECTOR3_NULL;		// 位置(整数)
+	INT_VECTOR3 nDegree = INT_VECTOR3_NULL;		// 角度(度数・整数)
+	int nIndexModel = 0;						// 設置するモデルの番号
+	int nTypeModel = OBJECTTYPE;				// 設置タイプ(プレイヤー or オブジェクト)
+	float fSpd = 0.0f;							// 移動速度(キャラクターのみ・現在未使用)
+	int nCollisionType = 1;						// 当たり判定の種類
+
+	while (1)
+	{
+		if (ReadScriptLine(pReader))
+		{ // 有効な行
+			const char *pLine = pReader->aLine;		// 読み込んだ行
+
+			if (strstr(pLine, READ_INDEX) != NULL)			(void)sscanf(GetValue(pLine), "%d", &nTypeModel);
+			else if (strstr(pLine, READ_TYPE) != NULL)		(void)sscanf(GetValue(pLine), "%d", &nIndexModel);
+			else if (strstr(pLine, READ_POS) != NULL)		(void)sscanf(GetValue(pLine), "%d %d %d", &nPos.x, &nPos.y, &nPos.z);
+			else if (strstr(pLine, READ_ROT) != NULL)		(void)sscanf(GetValue(pLine), "%d %d %d", &nDegree.x, &nDegree.y, &nDegree.z);
+			else if (strstr(pLine, READ_SPD) != NULL)		(void)sscanf(GetValue(pLine), "%f", &fSpd);
+			else if (strstr(pLine, READ_COLLISION) != NULL)
+			{ // 当たり判定の種類 (範囲外なら0)
+				(void)sscanf(GetValue(pLine), "%d", &nCollisionType);
+				if (nCollisionType < 0 || nCollisionType >= COLLISIONTYPE_MAX) nCollisionType = 0;
+			}
+
+			if (strstr(pLine, READ_ENDMODELSET) != NULL)
+			{ // モデル情報の終了 → 設置
+				if (nIndexModel < g_nModelNum)
+				{ // インデックス範囲内
+					D3DXVECTOR3 pos = INTToFloat(nPos);								// 位置
+					D3DXVECTOR3 rot = DegreeToRadian(INTToFloat(nDegree));			// 角度(ラジアン)
+
+					switch (nTypeModel)
+					{
+					case PLAYERTYPE:		// プレイヤー
+						SetPlayer(pos, rot, NULL);
+						break;
+
+					case OBJECTTYPE:		// オブジェクト
+						SetObject(pos, rot, nIndexModel, (COLLISIONTYPE)nCollisionType);
+						break;
+					}
+				}
+				else
+				{ // インデックス範囲外
+					GenerateMessageBox(MB_ICONERROR, "Error (2)", "%d番目のモデルのインデックス設定に失敗しました。", nCntModel);
+				}
+
+				return;
+			}
+		}
+
+		if (pReader->bEof) return;		// 終了位置が無いままEOF
+	}
+}
+
+//==================================================================================
+// --- XMASTREESET ～ END_XMASTREESET の読み込み及びクリスマスツリーの設置 ---
+//==================================================================================
+static void ReadXmasTreeSet(SCRIPT_READER *pReader, int nCntModel)
+{
+	INT_VECTOR3 nPos = INT_VECTOR3_NULL;		// 位置(整数)
+	INT_VECTOR3 nDegree = INT_VECTOR3_NULL;		// 角度(度数・整数)
+	int nIndexModel = 0;						// 設置するモデルの番号
+
+	while (1)
+	{
+		if (ReadScriptLine(pReader))
+		{ // 有効な行
+			const char *pLine = pReader->aLine;		// 読み込んだ行
+
+			if (strstr(pLine, READ_TYPE) != NULL)			(void)sscanf(GetValue(pLine), "%d", &nIndexModel);
+			else if (strstr(pLine, READ_POS) != NULL)		(void)sscanf(GetValue(pLine), "%d %d %d", &nPos.x, &nPos.y, &nPos.z);
+			else if (strstr(pLine, READ_ROT) != NULL)		(void)sscanf(GetValue(pLine), "%d %d %d", &nDegree.x, &nDegree.y, &nDegree.z);
+
+			if (strstr(pLine, READ_ENDXMASTREESET) != NULL)
+			{ // ツリー情報の終了 → 設置
+				if (nIndexModel < g_nModelNum)
+				{ // インデックス範囲内
+					SetXmasTree(INTToFloat(nPos), DegreeToRadian(INTToFloat(nDegree)), nIndexModel);
+				}
+				else
+				{ // インデックス範囲外
+					GenerateMessageBox(MB_ICONERROR, "Error (2)", "%d番目のモデルのインデックス設定に失敗しました。", nCntModel);
+				}
+
+				return;
+			}
+		}
+
+		if (pReader->bEof) return;		// 終了位置が無いままEOF
+	}
+}
+
+//==================================================================================
+// --- FIELDSET ～ END_FIELDSET の読み込み及び床の設置 ---
+//==================================================================================
+static void ReadFieldSet(SCRIPT_READER *pReader, int nCntField)
+{
+	INT_VECTOR3 nPos = INT_VECTOR3_NULL;		// 位置(整数)
+	INT_VECTOR3 nDegree = INT_VECTOR3_NULL;		// 角度(度数・整数)
+	INT_VECTOR3 nSize = INT_VECTOR3_NULL;		// サイズ(整数, x:幅 y:奥行)
+	INT_VECTOR2 nBlock = INT_VECTOR2_NULL;		// 分割数(整数)
+	D3DXVECTOR3 move = D3DXVECTOR3_NULL;		// 移動量(テクスチャスクロール)
+	int nCullType = D3DCULL_CCW;				// カリングタイプ
+	int nTexType = 0;							// テクスチャの番号
+
+	while (1)
+	{
+		if (ReadScriptLine(pReader))
+		{ // 有効な行
+			const char *pLine = pReader->aLine;		// 読み込んだ行
+
+			if (strstr(pLine, READ_TEXTYPE) != NULL)		(void)sscanf(GetValue(pLine), "%d", &nTexType);
+			else if (strstr(pLine, READ_POS) != NULL)		(void)sscanf(GetValue(pLine), "%d %d %d", &nPos.x, &nPos.y, &nPos.z);
+			else if (strstr(pLine, READ_MOVE) != NULL)		(void)sscanf(GetValue(pLine), "%f %f", &move.x, &move.z);
+			else if (strstr(pLine, READ_SIZE) != NULL)		(void)sscanf(GetValue(pLine), "%d %d", &nSize.x, &nSize.y);
+			else if (strstr(pLine, READ_ROT) != NULL)		(void)sscanf(GetValue(pLine), "%d %d %d", &nDegree.x, &nDegree.y, &nDegree.z);
+			else if (strstr(pLine, READ_BLOCK) != NULL)		(void)sscanf(GetValue(pLine), "%d %d", &nBlock.x, &nBlock.y);
+			else if (strstr(pLine, READ_CULL) != NULL)		(void)sscanf(GetValue(pLine), "%d", &nCullType);
+
+			if (strstr(pLine, READ_ENDFIELDSET) != NULL)
+			{ // 床情報の終了 → 設置
+				if (nTexType < g_nTextureNum)
+				{ // テクスチャインデックス範囲内
+					D3DXVECTOR3 size = INTToFloat(nSize);		// サイズ
+					D3DXVECTOR2 block = INTToFloat(nBlock);		// 分割数
+
+					SetField(INTToFloat(nPos), move, DegreeToRadian(INTToFloat(nDegree)),
+						size.x, size.y, nTexType, (int)block.x, (int)block.y, (D3DCULL)nCullType);
+				}
+				else
+				{ // テクスチャインデックス範囲外
+					GenerateMessageBox(MB_ICONERROR, "Error (4)", "%d番目の床のテクスチャ設定に失敗しました。", nCntField);
+				}
+
+				return;
+			}
+		}
+
+		if (pReader->bEof) return;		// 終了位置が無いままEOF
+	}
+}
+
+//==================================================================================
+// --- MESHFIELDSET ～ END_MESHFIELDSET の読み込み及びメッシュフィールドの設置 ---
+//==================================================================================
+static void ReadMeshFieldSet(SCRIPT_READER *pReader, int nCntField)
+{
+	INT_VECTOR3 nPos = INT_VECTOR3_NULL;		// 位置(整数)
+	INT_VECTOR3 nDegree = INT_VECTOR3_NULL;		// 角度(度数・整数)
+	INT_VECTOR3 nSize = INT_VECTOR3_NULL;		// サイズ(整数, x:幅 y:奥行)
+	INT_VECTOR2 nBlock = INT_VECTOR2_NULL;		// 分割数(整数)
+	int nCullType = D3DCULL_CCW;				// カリングタイプ
+	int nTexType = 0;							// テクスチャの番号
+
+	while (1)
+	{
+		if (ReadScriptLine(pReader))
+		{ // 有効な行
+			const char *pLine = pReader->aLine;		// 読み込んだ行
+
+			if (strstr(pLine, READ_TEXTYPE) != NULL)		(void)sscanf(GetValue(pLine), "%d", &nTexType);
+			else if (strstr(pLine, READ_POS) != NULL)		(void)sscanf(GetValue(pLine), "%d %d %d", &nPos.x, &nPos.y, &nPos.z);
+			else if (strstr(pLine, READ_SIZE) != NULL)		(void)sscanf(GetValue(pLine), "%d %d", &nSize.x, &nSize.y);
+			else if (strstr(pLine, READ_ROT) != NULL)		(void)sscanf(GetValue(pLine), "%d %d %d", &nDegree.x, &nDegree.y, &nDegree.z);
+			else if (strstr(pLine, READ_BLOCK) != NULL)		(void)sscanf(GetValue(pLine), "%d %d", &nBlock.x, &nBlock.y);
+			else if (strstr(pLine, READ_CULL) != NULL)		(void)sscanf(GetValue(pLine), "%d", &nCullType);
+
+			if (strstr(pLine, READ_ENDMESHFIELDSET) != NULL)
+			{ // メッシュフィールド情報の終了 → 設置
+				if (nTexType < g_nTextureNum)
+				{ // テクスチャインデックス範囲内
+					D3DXVECTOR3 size = INTToFloat(nSize);		// サイズ
+					D3DXVECTOR2 block = INTToFloat(nBlock);		// 分割数
+
+					SetMeshField(INTToFloat(nPos), DegreeToRadian(INTToFloat(nDegree)),
+						size.x, size.y, (int)block.x, (int)block.y, nTexType, (D3DCULL)nCullType);
+				}
+				else
+				{ // テクスチャインデックス範囲外
+					GenerateMessageBox(MB_ICONERROR, "Error (4)", "%d番目の床のテクスチャ設定に失敗しました。", nCntField);
+				}
+
+				return;
+			}
+		}
+
+		if (pReader->bEof) return;		// 終了位置が無いままEOF
+	}
+}
+
+//==================================================================================
+// --- WALLSET ～ END_WALLSET の読み込み及び壁の設置 ---
+//==================================================================================
+static void ReadWallSet(SCRIPT_READER *pReader, int nCntWall)
+{
+	INT_VECTOR3 nPos = INT_VECTOR3_NULL;		// 位置(整数)
+	INT_VECTOR3 nDegree = INT_VECTOR3_NULL;		// 角度(度数・整数)
+	INT_VECTOR3 nSize = INT_VECTOR3_NULL;		// サイズ(整数, x:幅 y:高さ)
+	INT_VECTOR2 nBlock = INT_VECTOR2_NULL;		// 分割数(整数)
+	D3DXCOLOR col = D3DXCOLOR_NULL;				// 色
+	int nCullType = D3DCULL_CCW;				// カリングタイプ
+	int nTexType = 0;							// テクスチャの番号
+
+	while (1)
+	{
+		if (ReadScriptLine(pReader))
+		{ // 有効な行
+			const char *pLine = pReader->aLine;		// 読み込んだ行
+
+			if (strstr(pLine, READ_TEXTYPE) != NULL)		(void)sscanf(GetValue(pLine), "%d", &nTexType);
+			else if (strstr(pLine, READ_POS) != NULL)		(void)sscanf(GetValue(pLine), "%d %d %d", &nPos.x, &nPos.y, &nPos.z);
+			else if (strstr(pLine, READ_ROT) != NULL)		(void)sscanf(GetValue(pLine), "%d %d %d", &nDegree.x, &nDegree.y, &nDegree.z);
+			else if (strstr(pLine, READ_COL) != NULL)		(void)sscanf(GetValue(pLine), "%f %f %f %f", &col.r, &col.g, &col.b, &col.a);
+			else if (strstr(pLine, READ_BLOCK) != NULL)		(void)sscanf(GetValue(pLine), "%d %d", &nBlock.x, &nBlock.y);
+			else if (strstr(pLine, READ_SIZE) != NULL)		(void)sscanf(GetValue(pLine), "%d %d", &nSize.x, &nSize.y);
+			else if (strstr(pLine, READ_CULL) != NULL)		(void)sscanf(GetValue(pLine), "%d", &nCullType);
+
+			if (strstr(pLine, READ_ENDWALLSET) != NULL)
+			{ // 壁情報の終了 → 設置
+				if (nTexType < g_nTextureNum)
+				{ // テクスチャインデックス範囲内
+					D3DXVECTOR3 size = INTToFloat(nSize);		// サイズ
+					D3DXVECTOR2 block = INTToFloat(nBlock);		// 分割数
+
+					SetWall(INTToFloat(nPos), DegreeToRadian(INTToFloat(nDegree)),
+						size.x, size.y, nTexType, (int)block.x, (int)block.y, col, (D3DCULL)nCullType);
+				}
+				else
+				{ // テクスチャインデックス範囲外
+					GenerateMessageBox(MB_ICONERROR, "Error (5)", "%d番目の壁のテクスチャ設定に失敗しました。", nCntWall);
+				}
+
+				return;
+			}
+		}
+
+		if (pReader->bEof) return;		// 終了位置が無いままEOF
+	}
+}
+
+//==================================================================================
+// --- 現在は使っていないブロック(TREESET / BULLETSET / EXPLOSIONSET)を読み飛ばす ---
+// ※ 木・弾・爆発の処理は削除したが、既存のスクリプトをそのまま読めるように残している
+//==================================================================================
+static void SkipScriptBlock(SCRIPT_READER *pReader, const char *pEndText)
+{
+	while (1)
+	{
+		if (ReadScriptLine(pReader) && strstr(pReader->aLine, pEndText) != NULL)
+		{ // ブロックの終了
+			return;
+		}
+
+		if (pReader->bEof) return;		// 終了位置が無いままEOF
+	}
+}
+
+//==================================================================================
+// --- テクスチャ番号のみを持つブロック(EFFECTSET / SHADOWSET)の読み込み ---
+// pEndText      : ブロックの終了文字列
+// pSetFunc      : 読み込んだテクスチャ番号を渡す設定関数
+// pErrorCaption : 番号が範囲外の時のエラー見出し
+// pErrorText    : 番号が範囲外の時のエラー文
+//==================================================================================
+static void ReadTextureIndexSet(SCRIPT_READER *pReader,
+	const char *pEndText,
+	void (*pSetFunc)(int),
+	const char *pErrorCaption,
+	const char *pErrorText)
+{
+	int nTexType = 0;		// テクスチャの番号
+
+	while (1)
+	{
+		if (ReadScriptLine(pReader))
+		{ // 有効な行
+			const char *pLine = pReader->aLine;		// 読み込んだ行
+
+			if (strstr(pLine, READ_TEXTYPE) != NULL)		(void)sscanf(GetValue(pLine), "%d", &nTexType);
+
+			if (strstr(pLine, pEndText) != NULL)
+			{ // ブロックの終了 → 設定
+				if (nTexType < g_nTextureNum)
+				{ // テクスチャインデックス範囲内
+					pSetFunc(nTexType);
+				}
+				else
+				{ // テクスチャインデックス範囲外
+					GenerateMessageBox(MB_ICONERROR, pErrorCaption, pErrorText);
+				}
+
+				return;
+			}
+		}
+
+		if (pReader->bEof) return;		// 終了位置が無いままEOF
+	}
+}
+
+//==================================================================================
+//
+// ここから LoadMotion 用の内部処理
+// 終了位置の前にEOFに達した場合は、エラー表示とファイルクローズを行い E_FAIL を返す
+//
+//==================================================================================
+
+//==================================================================================
+// --- モーションスクリプトの1行読み込み ---
+// 戻り値 : S_OK = 読み込む行 / S_FALSE = コメント行・空行 / E_FAIL = EOF (クローズ済み)
+//==================================================================================
+static HRESULT ReadMotionLine(SCRIPT_READER *pReader)
+{
+	bool bValid = ReadScriptLine(pReader);		// 有効な行か
+
+	if (pReader->bEof)
+	{ // 終了位置の前にEOFに達した
+		GenerateMessageBox(MB_ICONERROR, "Error (2)", "読み込みが異常終了しました。");
+		fclose(pReader->pFile);
+		return E_FAIL;
+	}
+
+	return bValid ? S_OK : S_FALSE;
+}
+
+//==================================================================================
+// --- パーツのモデルパスの読み込み (未読み込みのモデルのみ新規ロード) ---
+//==================================================================================
+static void ReadMotionModelPath(SCRIPT_READER *pReader, MOTION_LOADER *pLoader)
+{
+	if (pLoader->nNumModelPath >= MAX_MOTION_MODEL)
+	{ // 対応表が満杯
+		return;
+	}
+
+	char aModelPath[MAX_PATH] = {};								// Xファイルパス
+	int *pIdxObject = &pLoader->aIdxObject[pLoader->nNumModelPath];	// 格納先の対応表
+
+	(void)sscanf(GetValue(pReader->aLine), "%s", aModelPath);
+
+	/*** InitScript で読み込んだファイル名と重複していないか確認 ***/
+	*pIdxObject = -1;
+	for (int nCntModel = 0; nCntModel < g_nModelNum; nCntModel++)
+	{
+		if (strcmp(aModelPath, g_aXFileName[nCntModel]) == 0)
+		{ // 重複していたら、その番号を使う
+			*pIdxObject = nCntModel;
+			break;
+		}
+	}
+
+	if (*pIdxObject == -1)
+	{ // 未読み込みのモデル → 新規で読み込み、末尾の番号を割り当てる
+		(void)LoadObject(aModelPath);
+		*pIdxObject = g_nModelNum;
+		g_nModelNum++;
+	}
+
+	pLoader->nNumModelPath++;
+}
+
+//==================================================================================
+// --- CHARACTERSET ～ END_CHARACTERSET の読み込み及びキャラクター情報の登録 ---
+//==================================================================================
+static HRESULT ReadCharacterSet(SCRIPT_READER *pReader, MOTION_LOADER *pLoader)
+{
+	PartsInfo parts = {};		// パーツ情報 (省略された項目は前のパーツの値を引き継ぐ)
+	int nNumParts = 0;			// パーツ総数
+	float fRadius = 0.0f;		// 当たり判定の半径
+	float fHeight = 0.0f;		// 当たり判定の高さ
+	float fMove = 0.0f;			// 移動量
+	float fJump = 0.0f;			// 跳躍力
+	int nIdxHead = 0;			// 頭パーツの番号
+	int nIdxHand = 0;			// 手パーツの番号
+
+	while (1)
+	{
+		HRESULT hr = ReadMotionLine(pReader);		// 1行読み込み
+		if (FAILED(hr)) return hr;
+		if (hr == S_FALSE) continue;				// コメント行
+
+		const char *pLine = pReader->aLine;			// 読み込んだ行
+
+		if (strstr(pLine, READ_ENDCHARACTER) != NULL)
+		{ // キャラクター情報の終了 → 登録
+			if (pLoader->mode == MODE_TITLE)
+			{ // タイトル用のプレイヤー
+				SetMotionPartsNumPlayerTitle(nNumParts);
+			}
+			else
+			{ // ゲーム用のプレイヤー
+				SetPlayerSetting(fMove, fJump);
+				SetMotionPartsNum(nNumParts);
+				SetCollisionSize(fRadius, fHeight);
+				SetPlayerPartsIndices(nIdxHead, nIdxHand);
+			}
+
+			return S_OK;
+		}
+		else if (strstr(pLine, READ_PARTS) != NULL)		(void)sscanf(GetValue(pLine), "%d", &nNumParts);
+		else if (strstr(pLine, READ_RADIUS) != NULL)	(void)sscanf(GetValue(pLine), "%f", &fRadius);
+		else if (strstr(pLine, READ_HEIGHT) != NULL)	(void)sscanf(GetValue(pLine), "%f", &fHeight);
+		else if (strstr(pLine, READ_MOVE) != NULL)		(void)sscanf(GetValue(pLine), "%f", &fMove);
+		else if (strstr(pLine, READ_JUMP) != NULL)		(void)sscanf(GetValue(pLine), "%f", &fJump);
+		else if (strstr(pLine, READ_HEAD) != NULL)		(void)sscanf(GetValue(pLine), "%d", &nIdxHead);
+		else if (strstr(pLine, READ_HAND) != NULL)		(void)sscanf(GetValue(pLine), "%d", &nIdxHand);
+		else if (strstr(pLine, READ_PARTSSET) != NULL)
+		{ // パーツ1つ分の情報
+			hr = ReadPartsSet(pReader, pLoader, &parts);
+			if (FAILED(hr)) return hr;
+		}
+	}
+}
+
+//==================================================================================
+// --- PARTSSET ～ END_PARTSSET の読み込み及びパーツ情報の登録 ---
+//==================================================================================
+static HRESULT ReadPartsSet(SCRIPT_READER *pReader, MOTION_LOADER *pLoader, PartsInfo *pParts)
+{
+	while (1)
+	{
+		HRESULT hr = ReadMotionLine(pReader);		// 1行読み込み
+		if (FAILED(hr)) return hr;
+		if (hr == S_FALSE) continue;				// コメント行
+
+		const char *pLine = pReader->aLine;			// 読み込んだ行
+
+		if (strstr(pLine, READ_ENDPARTSSET) != NULL)
+		{ // パーツ情報の終了 → 登録
+			if (pLoader->mode == MODE_TITLE)
+			{
+				LoadPartsPlayerTitle(*pParts);
+			}
+			else
+			{
+				LoadPartsPlayer(*pParts);
+			}
+
+			return S_OK;
+		}
+		else if (strstr(pLine, READ_INDEX) != NULL)
+		{ // モデル番号 → 対応するオブジェクト番号も取得
+			(void)sscanf(GetValue(pLine), "%d", &pParts->nIdxModel);
+
+			if (pParts->nIdxModel >= 0 && pParts->nIdxModel < MAX_MOTION_MODEL)
+			{
+				pParts->nIdxObject = pLoader->aIdxObject[pParts->nIdxModel];
+			}
+		}
+		else if (strstr(pLine, READ_PARENT) != NULL)	(void)sscanf(GetValue(pLine), "%d", &pParts->nIdxModelParent);
+		else if (strstr(pLine, READ_POS) != NULL)		(void)sscanf(GetValue(pLine), "%f %f %f", &pParts->pos.x, &pParts->pos.y, &pParts->pos.z);
+		else if (strstr(pLine, READ_ROT) != NULL)		(void)sscanf(GetValue(pLine), "%f %f %f", &pParts->rot.x, &pParts->rot.y, &pParts->rot.z);
+	}
+}
+
+//==================================================================================
+// --- MOTIONSET ～ END_MOTIONSET の読み込み及びモーションの登録 ---
+//==================================================================================
+static HRESULT ReadMotionSet(SCRIPT_READER *pReader, MOTION_LOADER *pLoader)
+{
+	int nKeySet = 0;		// 読み込み中のキー情報番号
+
+	while (1)
+	{
+		HRESULT hr = ReadMotionLine(pReader);		// 1行読み込み
+		if (FAILED(hr)) return hr;
+		if (hr == S_FALSE) continue;				// コメント行
+
+		const char *pLine = pReader->aLine;			// 読み込んだ行
+
+		if (strstr(pLine, READ_ENDMOTIONSET) != NULL)
+		{ // モーション情報の終了 → 登録
+			if (pLoader->mode == MODE_TITLE)
+			{
+				LoadMotionPlayerTitle(&g_motionInfo, pLoader->motionType);
+			}
+			else
+			{
+				LoadMotionPlayer(&g_motionInfo, pLoader->motionType);
+			}
+
+			ZeroMemory(&g_motionInfo, sizeof(MOTION_INFO));
+
+			/*** 次のモーションの種類へ (最後の種類で止める) ***/
+			if (pLoader->motionType < MOTIONTYPE_MAX - 1)
+			{
+				pLoader->motionType = (MOTIONTYPE)(pLoader->motionType + 1);
+			}
+
+			return S_OK;
+		}
+		else if (strstr(pLine, READ_LOOP) != NULL)
+		{ // ループするか (1以上 => ループ)
+			int nLoop = 0;		// ループ指定(整数)
+			(void)sscanf(GetValue(pLine), "%d", &nLoop);
+			g_motionInfo.bLoop = (nLoop > 0);
+		}
+		else if (strstr(pLine, READ_NUMKEY) != NULL)
+		{ // キー情報の数
+			(void)sscanf(GetValue(pLine), "%d", &g_motionInfo.nNumKey);
+		}
+		else if (strcmp(pLine, READ_KEYSET) == 0)
+		{ // キー情報1つ分
+			hr = ReadKeySet(pReader, nKeySet);
+			if (FAILED(hr)) return hr;
+
+			if (nKeySet < MAX_KEY_INFO - 1) nKeySet++;
+		}
+	}
+}
+
+//==================================================================================
+// --- KEYSET ～ END_KEYSET の読み込み ---
+//==================================================================================
+static HRESULT ReadKeySet(SCRIPT_READER *pReader, int nKeySet)
+{
+	int nKey = 0;		// 読み込み中のキー番号(パーツ番号)
+
+	while (1)
+	{
+		HRESULT hr = ReadMotionLine(pReader);		// 1行読み込み
+		if (FAILED(hr)) return hr;
+		if (hr == S_FALSE) continue;				// コメント行
+
+		const char *pLine = pReader->aLine;			// 読み込んだ行
+
+		if (strstr(pLine, READ_ENDKEYSET) != NULL)
+		{ // キー情報の終了
+			return S_OK;
+		}
+		else if (strstr(pLine, READ_FRAME) != NULL)
+		{ // 再生フレーム数
+			(void)sscanf(GetValue(pLine), "%d", &g_motionInfo.aKeyInfo[nKeySet].nFrame);
+		}
+		else if (strcmp(pLine, READ_KEY) == 0)
+		{ // パーツ1つ分のキー
+			hr = ReadKey(pReader, nKeySet, nKey);
+			if (FAILED(hr)) return hr;
+
+			if (nKey < MAX_KEY - 1) nKey++;
+		}
+	}
+}
+
+//==================================================================================
+// --- KEY ～ END_KEY の読み込み ---
+//==================================================================================
+static HRESULT ReadKey(SCRIPT_READER *pReader, int nKeySet, int nKey)
+{
+	KEY *pKey = &g_motionInfo.aKeyInfo[nKeySet].aKey[nKey];		// 格納先のキー
+
+	while (1)
+	{
+		HRESULT hr = ReadMotionLine(pReader);		// 1行読み込み
+		if (FAILED(hr)) return hr;
+		if (hr == S_FALSE) continue;				// コメント行
+
+		const char *pLine = pReader->aLine;			// 読み込んだ行
+
+		if (strstr(pLine, READ_ENDKEY) != NULL)
+		{ // キーの終了
+			return S_OK;
+		}
+		else if (strstr(pLine, READ_POS) != NULL)	(void)sscanf(GetValue(pLine), "%f %f %f", &pKey->fPosX, &pKey->fPosY, &pKey->fPosZ);
+		else if (strstr(pLine, READ_ROT) != NULL)	(void)sscanf(GetValue(pLine), "%f %f %f", &pKey->fRotX, &pKey->fRotY, &pKey->fRotZ);
+	}
 }

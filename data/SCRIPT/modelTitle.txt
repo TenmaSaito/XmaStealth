@@ -25,7 +25,7 @@ TEXTURE_FILENAME = data/TEXTURE/sky000.jpg			# [6]ソラ
 #=================================================
 # 読み込むモデル数
 #================================================
-NUM_MODEL = 27
+NUM_MODEL = 28
 
 #=================================================
 # Xファイルのパス
@@ -57,6 +57,7 @@ MODEL_FILENAME = data/MODEL/Object/CardBoard.x				# [23] 段ボール
 MODEL_FILENAME = data/MODEL/Object/MassageChair.x			# [24] マッサージチェア
 MODEL_FILENAME = data/MODEL/Object/Ornaments/present_box.x			# [25] プレゼントボックス
 MODEL_FILENAME = data/MODEL/Object/cafe_table.x				# [26] カフェテリア風机 
+MODEL_FILENAME = data/MODEL/Object/TestVertexColor.x				# [27] テスト 
 
 #=================================================
 # 地面(芝生)

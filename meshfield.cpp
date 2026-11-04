@@ -1,391 +1,322 @@
-//================================================================================================================
+//==================================================================================
 //
-// DirectXのメッシュフィールド用表示処理 [meshfield.cpp]
-// Author : TENMA
+// メッシュフィールド(分割された地面・坂)の処理 [meshfield.cpp]
+// Author : TENMA SAITO
 //
-//================================================================================================================
+// 当たり判定のため、インデックスの並びを構造体にも控えておき、
+// 三角形ごとに「真上から見て内側にいるか」を外積で判定して高さを求める。
+//
+//==================================================================================
 //**********************************************************************************
-//*** インクルードファイル ***
+// *** インクルードファイル ***
 //**********************************************************************************
 #include "meshfield.h"
 #include "effect.h"
 
-//*************************************************************************************************
-//*** マクロ定義 ***
-//*************************************************************************************************
-#define MAX_MESH				(64)		// メッシュの最大設置数
-#define MESHFIELD_SIZE_X		(300)		// ポリゴンの基本サイズ - X
-#define MESHFIELD_SIZE_Z		(300)		// ポリゴンの基本サイズ - Y
-#define MESHFIELD_SPD			(2.0f)		// ポリゴンの移動スピード
-#define MESHFIELD_ROTSPD		(0.1f)		// ポリゴンの回転スピード
-#define MESHFIELD_WDSPD			(0.1f)		// ポリゴンの拡縮スピード
-#define MESH_X_NUM				(5)			// ポリゴンの分割数 (X)※頂点数ではない
-#define MESH_Z_NUM				(5)			// ポリゴンの分割数 (Z)※頂点数ではない
-#define VERTEX_BUFFER(xBlock, zBlock)	((xBlock + 1) * (zBlock + 1))	// 頂点バッファの確保用
-#define INDEX_BUFFER(vertexNum, xBlock, zBlock)	(vertexNum + ((xBlock + 1) * (zBlock - 1)) + ((zBlock - 1) * 2))	// インデックスバッファ確保用		
-#define DRAWPRIM_NUM(xBlock, zBlock)	(((xBlock * zBlock) * 2) + ((zBlock - 1) * 4))	// 描画プリミティブ用
+//**********************************************************************************
+// *** マクロ定義 ***
+//**********************************************************************************
+#define MAX_MESH				(64)		// メッシュフィールドの最大設置数
+#define MAX_MESHFIELD_INDEX		(1000)		// 1枚あたりのインデックスの最大数 (20×20分割で878)
 
-//*************************************************************************************************
-//*** メッシュフィールド構造体 ***
-//*************************************************************************************************
+// --- 当たり判定を行う範囲 (中心からの倍率 / 元の調整値) ---
+#define COLLISION_RANGE_LEFT	(0.5f)		// 左側 (幅に対する倍率)
+#define COLLISION_RANGE_RIGHT	(1.4f)		// 右側 (幅に対する倍率)
+#define COLLISION_RANGE_DEPTH	(0.65f)		// 手前・奥 (奥行に対する倍率)
+
+//**********************************************************************************
+// *** メッシュフィールド構造体 ***
+//**********************************************************************************
 typedef struct
 {
-	D3DXVECTOR3 pos;		// ポリゴンの位置
-	D3DXVECTOR3 rot;		// ポリゴンの角度
-	D3DXMATRIX mtxWorld;	// ワールドマトリックス
-	WORD nIdx[1000];		// インデックス管理
-	D3DCULL cullType;		// カリングタイプ
-	int nXBlock;			// 分割数
-	int nZBlock;			// 分割数
-	int nIdxTexture;		// テクスチャ番号
-	float fWidth;			// ポリゴンの横幅
-	float fDepth;			// ポリゴンの奥行
-	bool bUse;				// 使用状況
-	LPDIRECT3DTEXTURE9		pTexture;	// テクスチャへのポインタ
-	LPDIRECT3DVERTEXBUFFER9 pVtxBuff;	// 頂点バッファのポインタ
-	LPDIRECT3DINDEXBUFFER9 pIdxBuff;	// インデックスバッファへのポインタ
+	D3DXVECTOR3 pos;						// 位置
+	D3DXVECTOR3 rot;						// 角度
+	D3DXMATRIX mtxWorld;					// ワールドマトリックス
+	WORD aIdx[MAX_MESHFIELD_INDEX];			// インデックスの控え(当たり判定用)
+	D3DCULL cullType;						// カリングタイプ
+	int nXBlock;							// 横の分割数
+	int nZBlock;							// 奥の分割数
+	int nIdxTexture;						// テクスチャ番号
+	float fWidth;							// 横幅
+	float fDepth;							// 奥行
+	bool bUse;								// 使用状況
+	LPDIRECT3DVERTEXBUFFER9 pVtxBuff;		// 頂点バッファのポインタ
+	LPDIRECT3DINDEXBUFFER9 pIdxBuff;		// インデックスバッファへのポインタ
 } MeshField, *PMESHFIELD;
 
-//*************************************************************************************************
-//*** プロトタイプ宣言 ***
-//*************************************************************************************************
+//**********************************************************************************
+// *** プロトタイプ宣言 ***
+//**********************************************************************************
+static bool GetTriangleHeight(const D3DXVECTOR3 *pPos, const D3DXVECTOR3 aPosTri[3], bool bOdd, float *pHeight, D3DXVECTOR3 *pNor);
 
-//*************************************************************************************************
-//*** グローバル変数 ***
-//*************************************************************************************************
-MeshField g_aMField[MAX_MESH];		// メッシュフィールド
+//**********************************************************************************
+// *** グローバル変数 ***
+//**********************************************************************************
+static MeshField g_aMField[MAX_MESH];		// メッシュフィールドの情報
 
-//================================================================================================================
-// --- リザルト用背景の初期化処理 ---
-//================================================================================================================
+//==================================================================================
+// --- メッシュフィールドの初期化処理 ---
+//==================================================================================
 void InitMeshfield(void)
 {
-	for (int nCntMeshField = 0; nCntMeshField < MAX_MESH; nCntMeshField++)
-	{
-		ZeroMemory(&g_aMField[nCntMeshField], sizeof(MeshField));
-	}
+	ZeroMemory(&g_aMField[0], sizeof g_aMField);
 }
 
-//================================================================================================================
-// --- リザルト用背景の終了処理 ---
-//================================================================================================================
+//==================================================================================
+// --- メッシュフィールドの終了処理 ---
+//==================================================================================
 void UninitMeshfield(void)
 {
-	PMESHFIELD pField = &g_aMField[0];
-
-	for (int nCntRelease = 0; nCntRelease < MAX_MESH; nCntRelease++, pField++)
+	for (int nCntField = 0; nCntField < MAX_MESH; nCntField++)
 	{
-		/*** テクスチャの破棄 ***/
-		if (pField->pTexture != NULL)
-		{
-			pField->pTexture->Release();
-			pField->pTexture = NULL;
-		}
-
-		/*** 頂点バッファの破棄 ***/
-		if (pField->pVtxBuff != NULL)
-		{
-			pField->pVtxBuff->Release();
-			pField->pVtxBuff = NULL;
-		}
-
-		/*** インデックスバッファの破棄 ***/
-		if (pField->pIdxBuff != NULL)
-		{
-			pField->pIdxBuff->Release();
-			pField->pIdxBuff = NULL;
-		}
+		/*** 頂点バッファ・インデックスバッファの破棄 ***/
+		RELEASE(g_aMField[nCntField].pVtxBuff);
+		RELEASE(g_aMField[nCntField].pIdxBuff);
 	}
 }
 
-//================================================================================================================
-// --- リザルト用背景の更新処理 ---
-//================================================================================================================
+//==================================================================================
+// --- メッシュフィールドの更新処理 ---
+//==================================================================================
 void UpdateMeshfield(void)
 {
 
 }
 
-//================================================================================================================
-// --- リザルト用背景の描画処理 ---
-//================================================================================================================
+//==================================================================================
+// --- メッシュフィールドの描画処理 ---
+//==================================================================================
 void DrawMeshfield(void)
 {
-	/*** デバイスの取得 ***/
-	LPDIRECT3DDEVICE9 pDevice = GetDevice();
-	D3DXMATRIX mtxRot, mtxTrans;		// 計算用マトリックス
-	PMESHFIELD pField = &g_aMField[0];
-	DWORD cullTypeDef;
+	LPDIRECT3DDEVICE9 pDevice = GetDevice();		// デバイス
+	D3DXMATRIX mtxRot, mtxTrans;					// 計算用マトリックス
 
-	for (int nCntMField = 0; nCntMField < MAX_MESH; nCntMField++, pField++)
+	for (int nCntField = 0; nCntField < MAX_MESH; nCntField++)
 	{
-		if (pField->bUse == true)
-		{
-			pDevice->GetRenderState(D3DRS_CULLMODE, &cullTypeDef);
+		PMESHFIELD pField = &g_aMField[nCntField];		// 描画するメッシュフィールド
 
-			SetCullingType(pField->cullType);
-
-			/*** ワールドマトリックスの初期化 ***/
-			D3DXMatrixIdentity(&pField->mtxWorld);
-
-			/*** 向きを反映 (※ 位置を反映する前に必ず行うこと！) ***/
-			D3DXMatrixRotationYawPitchRoll(&mtxRot,
-				pField->rot.y,			// Y軸回転
-				pField->rot.x,			// X軸回転
-				pField->rot.z);			// Z軸回転
-
-			D3DXMatrixMultiply(&pField->mtxWorld, &pField->mtxWorld, &mtxRot);
-
-			/*** 位置を反映 (※ 向きを反映したのちに行うこと！) ***/
-			D3DXMatrixTranslation(&mtxTrans,
-				pField->pos.x,
-				pField->pos.y,
-				pField->pos.z);
-
-			D3DXMatrixMultiply(&pField->mtxWorld, &pField->mtxWorld, &mtxTrans);
-
-			/*** ワールドマトリックスの設定 ***/
-			pDevice->SetTransform(D3DTS_WORLD, &pField->mtxWorld);
-
-			/*** 頂点バッファをデータストリームに設定 ***/
-			pDevice->SetStreamSource(0, pField->pVtxBuff, 0, sizeof(VERTEX_3D));
-
-			/*** インデックスバッファをデータストリームに設定 ***/
-			pDevice->SetIndices(pField->pIdxBuff);
-
-			/*** 頂点フォーマットの設定 ***/
-			pDevice->SetFVF(FVF_VERTEX_3D);
-
-			/*** テクスチャの設定 ***/
-			pDevice->SetTexture(0, GetTexture(pField->nIdxTexture));
-
-			/*** インデックスを利用したポリゴンの描画 ***/
-			pDevice->DrawIndexedPrimitive(D3DPT_TRIANGLESTRIP,
-				0,
-				0,
-				VERTEX_BUFFER(pField->nXBlock, pField->nZBlock),		// 頂点数
-				0,
-				DRAWPRIM_NUM(pField->nXBlock, pField->nZBlock));	// 描画するプリミティブ(三角ポリゴン)の数
-
-			SetCullingType((D3DCULL)cullTypeDef);
+		if (pField->bUse == false)
+		{ // 未使用
+			continue;
 		}
+
+		/*** ワールドマトリックスの計算 (回転 → 平行移動の順) ***/
+		// ※ 当たり判定でもこの行列を使うため、描画より先に判定すると1フレーム前の行列になる
+		D3DXMatrixIdentity(&pField->mtxWorld);
+
+		D3DXMatrixRotationYawPitchRoll(&mtxRot, pField->rot.y, pField->rot.x, pField->rot.z);
+		D3DXMatrixMultiply(&pField->mtxWorld, &pField->mtxWorld, &mtxRot);
+
+		D3DXMatrixTranslation(&mtxTrans, pField->pos.x, pField->pos.y, pField->pos.z);
+		D3DXMatrixMultiply(&pField->mtxWorld, &pField->mtxWorld, &mtxTrans);
+
+		pDevice->SetTransform(D3DTS_WORLD, &pField->mtxWorld);
+
+		/*** 頂点バッファ・インデックスバッファ・テクスチャの設定 ***/
+		pDevice->SetStreamSource(0, pField->pVtxBuff, 0, sizeof(VERTEX_3D));
+		pDevice->SetIndices(pField->pIdxBuff);
+		pDevice->SetFVF(FVF_VERTEX_3D);
+		pDevice->SetTexture(0, GetTexture(pField->nIdxTexture));
+
+		/*** インデックスを利用したポリゴンの描画 ***/
+		pDevice->DrawIndexedPrimitive(D3DPT_TRIANGLESTRIP,
+			0,
+			0,
+			MESH_VTX_NUM(pField->nXBlock, pField->nZBlock),		// 頂点数
+			0,
+			MESH_PRIM_NUM(pField->nXBlock, pField->nZBlock));	// 描画する三角形の数
 	}
 }
 
-//================================================================================================================
+//==================================================================================
 // --- メッシュフィールドの設置処理 ---
-//================================================================================================================
+//==================================================================================
 void SetMeshField(D3DXVECTOR3 pos, D3DXVECTOR3 rot, float fWidth, float fDepth, int nXBlock, int nZBlock, int nIdxTexture, D3DCULL culllType)
 {
-	/*** デバイスの取得 ***/
-	LPDIRECT3DDEVICE9 pDevice = GetDevice();
-	VERTEX_3D* pVtx;					// 頂点情報へのポインタ
-	HRESULT hr = E_FAIL;				// 例外判定
-	WORD* pIdx;							// インデックス情報へのポインタ
-	PMESHFIELD pField = &g_aMField[0];
+	LPDIRECT3DDEVICE9 pDevice = GetDevice();		// デバイス
 
-	for (int nCntField = 0; nCntField < MAX_MESH; nCntField++, pField++)
+	if (MESH_IDX_NUM(nXBlock, nZBlock) > MAX_MESHFIELD_INDEX)
+	{ // 分割数が多すぎて、当たり判定用のインデックスが控えきれない
+		GenerateMessageBox(MB_ICONERROR, "Error (MeshField)", "分割数が多すぎます。(%d × %d)", nXBlock, nZBlock);
+		return;
+	}
+
+	for (int nCntField = 0; nCntField < MAX_MESH; nCntField++)
 	{
-		// もし使われていなければ
-		if (pField->bUse == false)
-		{
-			/*** 各変数の初期化 ***/
-			ZeroMemory(&g_aMField[nCntField], sizeof(MeshField));
+		PMESHFIELD pField = &g_aMField[nCntField];		// 設置先のメッシュフィールド
 
-			// 情報の適用
-			pField->pos = pos;
-			pField->rot = RepairedRot(rot);
-			pField->fWidth = fWidth;
-			pField->fDepth = fDepth;
-			pField->nXBlock = nXBlock;
-			pField->nZBlock = nZBlock;
-			pField->nIdxTexture = nIdxTexture;
-			pField->cullType = culllType;
-			pField->bUse = true;		// 使用状態に
-
-			/*** 頂点バッファの生成 ***/
-			hr = pDevice->CreateVertexBuffer(sizeof(VERTEX_3D) * VERTEX_BUFFER(nXBlock, nZBlock),
-				D3DUSAGE_WRITEONLY,
-				FVF_VERTEX_3D,
-				D3DPOOL_MANAGED,
-				&pField->pVtxBuff,
-				NULL);
-
-			if (SUCCEEDED(hr))
-			{
-				/*** 頂点バッファの設定 ***/
-				pField->pVtxBuff->Lock(0, 0, (void**)&pVtx, 0);
-
-				/*** 頂点座標の設定の設定 + テクスチャ座標の設定 ***/
-				SetIndexedVertex(pVtx, pField->pos, nXBlock, nZBlock, fWidth, fDepth);
-
-				/*** 頂点バッファの設定を終了 ***/
-				pField->pVtxBuff->Unlock();
-			}
-
-			/*** インデックスバッファの生成 ***/
-			hr = pDevice->CreateIndexBuffer(sizeof(WORD) * INDEX_BUFFER(VERTEX_BUFFER(nXBlock, nZBlock), nXBlock, nZBlock),		// sizeof(WORD) * 必要なインデックス数
-				D3DUSAGE_WRITEONLY,
-				D3DFMT_INDEX16,
-				D3DPOOL_MANAGED,
-				&pField->pIdxBuff,
-				NULL);
-
-			if (SUCCEEDED(hr))
-			{
-				/*** インデックスバッファをロックし、頂点番号データを取得 ***/
-				pField->pIdxBuff->Lock(0, 0, (void**)&pIdx, 0);
-
-				/*** 頂点番号データの設定 ***/
-				SetIndex(pIdx, nXBlock, nZBlock, 0, &pField->nIdx[0]);
-
-				/*** インデックスバッファをアンロック ***/
-				pField->pIdxBuff->Unlock();
-			}
-
-			break;
+		if (pField->bUse == true)
+		{ // 使用中
+			continue;
 		}
+
+		/*** 情報の設定 ***/
+		ZeroMemory(pField, sizeof(MeshField));
+
+		pField->pos = pos;
+		pField->rot = RepairedRot(rot);
+		pField->fWidth = fWidth;
+		pField->fDepth = fDepth;
+		pField->nXBlock = nXBlock;
+		pField->nZBlock = nZBlock;
+		pField->nIdxTexture = nIdxTexture;
+		pField->cullType = culllType;
+		pField->bUse = true;
+
+		/*** 頂点バッファの生成・設定 ***/
+		if (SUCCEEDED(pDevice->CreateVertexBuffer(sizeof(VERTEX_3D) * MESH_VTX_NUM(nXBlock, nZBlock),
+			D3DUSAGE_WRITEONLY,
+			FVF_VERTEX_3D,
+			D3DPOOL_MANAGED,
+			&pField->pVtxBuff,
+			NULL)))
+		{
+			VERTEX_3D *pVtx = NULL;		// 頂点情報へのポインタ
+			pField->pVtxBuff->Lock(0, 0, (void**)&pVtx, 0);
+
+			SetIndexedVertex(pVtx, pField->pos, nXBlock, nZBlock, fWidth, fDepth);
+
+			pField->pVtxBuff->Unlock();
+		}
+
+		/*** インデックスバッファの生成・設定 (当たり判定用に控えも取る) ***/
+		if (SUCCEEDED(pDevice->CreateIndexBuffer(sizeof(WORD) * MESH_IDX_NUM(nXBlock, nZBlock),
+			D3DUSAGE_WRITEONLY,
+			D3DFMT_INDEX16,
+			D3DPOOL_MANAGED,
+			&pField->pIdxBuff,
+			NULL)))
+		{
+			WORD *pIdx = NULL;		// インデックス情報へのポインタ
+			pField->pIdxBuff->Lock(0, 0, (void**)&pIdx, 0);
+
+			SetIndex(pIdx, nXBlock, nZBlock, 0, &pField->aIdx[0]);
+
+			pField->pIdxBuff->Unlock();
+		}
+
+		return;
 	}
 }
 
-//================================================================================================================
-// --- メッシュフィールドの当たり判定処理 ---
-//================================================================================================================
-bool CollisionMeshField(D3DXVECTOR3* pPos, D3DXVECTOR3* pPosOld, D3DXVECTOR3* pMove)
+//==================================================================================
+// --- メッシュフィールドとの当たり判定 ---
+// 足元が地面より下にあれば地面の高さまで持ち上げる
+// 戻り値 : 着地したか (pVecNor には着地した面の法線が入る)
+//==================================================================================
+bool CollisionMeshField(D3DXVECTOR3 *pPos, D3DXVECTOR3 *pPosOld, D3DXVECTOR3 *pMove, D3DXVECTOR3 *pVecNor)
 {
-	VERTEX_3D *pVtx;					// 頂点情報へのポインタ
-	D3DXVECTOR3 pos[3];							// 境界線ベクトルの始点と終点
-	D3DXVECTOR3 vecLine[3] = {};	// 境界線ベクトル
-	D3DXVECTOR3 vecToPos[3] = {};	// 位置と境界線のはじめを結んだベクトル
-	D3DXVECTOR3 vecNor = {};
-	D3DXVECTOR3 vecGai[2] = {};
-	D3DXVECTOR3 vecMeshLine = {};	// 面のベクトル
-	D3DXVECTOR3 vecToPosTriangle = D3DXVECTOR3_NULL;	// 位置と境界線のはじめを結んだベクトル
-	bool bInside[3];
-	bool bLand = false;
-	float fVecPos[3] = {};
-	float fVecPosTriangle = 0.0f;
-	PMESHFIELD pField = &g_aMField[0];
+	bool bLand = false;		// 着地したか
 
 	if (pPos == NULL || pPosOld == NULL || pMove == NULL)
 	{
 		return false;
 	}
 
-	int n = (sizeof g_aMField / sizeof(MeshField));
-
-	for (int nCntMesh = 0; nCntMesh < MAX_MESH; nCntMesh++, pField++)
+	for (int nCntField = 0; nCntField < MAX_MESH; nCntField++)
 	{
-		if (pField->bUse == true)
-		{ // 使用状況チェック
-			/*** 頂点バッファの読み込み ***/
-			pField->pVtxBuff->Lock(0, 0, (void**)&pVtx, D3DLOCK_READONLY);
+		PMESHFIELD pField = &g_aMField[nCntField];		// 判定するメッシュフィールド
 
-			for (int nCntPrimitive = 0; nCntPrimitive < DRAWPRIM_NUM(pField->nXBlock, pField->nZBlock); nCntPrimitive++)
-			{ // プリミティブ描画数分、当たり判定を確認
-				if (pField->nIdx[nCntPrimitive] == pField->nIdx[nCntPrimitive + 1]
-					|| pField->nIdx[nCntPrimitive + 1] == pField->nIdx[nCntPrimitive + 2])
-				{ // インデックスが重なっている三角ポリゴンは無視
-					continue;
-				}
+		if (pField->bUse == false)
+		{ // 未使用
+			continue;
+		}
 
-				/*** 各三角形の頂点を取得 ***/
-				pos[0] = pVtx[pField->nIdx[nCntPrimitive]].pos;
-				pos[1] = pVtx[pField->nIdx[nCntPrimitive + 1]].pos;
-				pos[2] = pVtx[pField->nIdx[nCntPrimitive + 2]].pos;
+		/*** 大まかな範囲内か (x:左端 y:右端 z:手前端 w:奥端) ***/
+		D3DXVECTOR4 rect;
+		rect.x = pField->pos.x - (pField->fWidth * COLLISION_RANGE_LEFT);
+		rect.y = pField->pos.x + (pField->fWidth * COLLISION_RANGE_RIGHT);
+		rect.z = pField->pos.z - (pField->fDepth * COLLISION_RANGE_DEPTH);
+		rect.w = pField->pos.z + (pField->fDepth * COLLISION_RANGE_DEPTH);
 
-				D3DXVec3TransformCoord(&pos[0], &pos[0], &pField->mtxWorld);
-				D3DXVec3TransformCoord(&pos[1], &pos[1], &pField->mtxWorld);
-				D3DXVec3TransformCoord(&pos[2], &pos[2], &pField->mtxWorld);
+		if (CollisionBoxZ(rect, *pPos) == false)
+		{ // 範囲外
+			continue;
+		}
 
-				/*** 境界線ベクトルを計算 ***/
-				vecLine[0] = pos[1] - pos[0];
-				vecLine[1] = pos[2] - pos[1];
-				vecLine[2] = pos[0] - pos[2];
+		/*** 三角形ごとに判定 ***/
+		VERTEX_3D *pVtx = NULL;		// 頂点情報へのポインタ
+		pField->pVtxBuff->Lock(0, 0, (void**)&pVtx, D3DLOCK_READONLY);
 
-				/*** 現在位置との関係を外積を使い求める ***/
-				vecToPos[0] = *pPos - pos[0];
-				vecToPos[1] = *pPos - pos[1];
-				vecToPos[2] = *pPos - pos[2];
+		int nNumPrim = MESH_PRIM_NUM(pField->nXBlock, pField->nZBlock);		// 三角形の数
 
-				fVecPos[0] = (vecLine[0].z * vecToPos[0].x) - (vecLine[0].x * vecToPos[0].z);	// This is 外積
-				fVecPos[1] = (vecLine[1].z * vecToPos[1].x) - (vecLine[1].x * vecToPos[1].z);	// This is 外積
-				fVecPos[2] = (vecLine[2].z * vecToPos[2].x) - (vecLine[2].x * vecToPos[2].z);	// This is 外積
+		for (int nCntPrim = 0; nCntPrim < nNumPrim; nCntPrim++)
+		{
+			const WORD *pIdxTri = &pField->aIdx[nCntPrim];		// この三角形のインデックス(3つ)
 
-				/*** 三角形の番号によって外積判定が変わるため、場合分け ***/
-				if ((fVecPos[0] > 0 && fVecPos[1] > 0 && fVecPos[2] > 0) 
-					&& (nCntPrimitive % 2) == 0)
-				{ // もし偶数番目の三角形なら、境界線ベクトルの内側にいれば
-					/** その三角形の内側にいる判定 **/
-					/*** 外積用ベクトルを用意 ***/
-					vecGai[0] = pos[1] - pos[0];
-					vecGai[1] = pos[2] - pos[0];
-
-					/** ベクトルを用いて３次元ベクトルの外積を求める **/
-					vecNor.x = (vecGai[0].y * vecGai[1].z) - (vecGai[0].z * vecGai[1].y);
-					vecNor.y = (vecGai[0].z * vecGai[1].x) - (vecGai[0].x * vecGai[1].z);
-					vecNor.z = (vecGai[0].x * vecGai[1].y) - (vecGai[0].y * vecGai[1].x);
-
-					/** 法線ベクトルを正規化 **/
-					D3DXVec3Normalize(&vecNor, &vecNor);
-
-					vecMeshLine = (pos[1] + vecLine[1] * 0.5f) - pos[0];
-
-					vecToPosTriangle = *pPosOld - pos[0];
-
-					fVecPosTriangle = (vecMeshLine.z * vecToPosTriangle.x) - (vecMeshLine.x * vecToPosTriangle.z);
-					PrintDebugProc("%f\n", fVecPosTriangle);
-
-					float fPosY = pos[0].y - ((1.0f / vecNor.y) * ((vecNor.x * (pPos->x - pos[0].x)) + (vecNor.z * (pPos->z - pos[0].z))));
-
-					fPosY = fabsf(fPosY);
-
-					if (fPosY >= pPos->y)
-					{
-						pPos->y = fPosY;
-						//pMove->y = 0.0f;
-						bLand = true;
-						PrintDebugProc("Landing...\n");
-					}
-				}
-
-				if ((fVecPos[0] < 0 && fVecPos[1] < 0 && fVecPos[2] < 0)
-					&& (nCntPrimitive % 2) == 1)
-				{ // もし奇数個の三角形なら、境界線ベクトルの外側にいれば
-					/** その三角形の内側にいる判定 **/
-					vecGai[0] = pos[1] - pos[0];
-					vecGai[1] = pos[2] - pos[0];
-
-					vecNor.x = (vecGai[0].y * vecGai[1].z) - (vecGai[0].z * vecGai[1].y);
-					vecNor.y = (vecGai[0].z * vecGai[1].x) - (vecGai[0].x * vecGai[1].z);
-					vecNor.z = (vecGai[0].x * vecGai[1].y) - (vecGai[0].y * vecGai[1].x);
-
-					vecNor *= -1;
-					D3DXVec3Normalize(&vecNor, &vecNor);
-
-					vecMeshLine = (pos[1] + vecLine[1] * 0.5f) - pos[0];
-
-					vecToPosTriangle = *pPosOld - pos[0];
-
-					fVecPosTriangle = (vecMeshLine.z * vecToPosTriangle.x) - (vecMeshLine.x * vecToPosTriangle.z);
-					PrintDebugProc("%f\n", fVecPosTriangle);
-
-					float fPosY = pos[0].y - ((1.0f / vecNor.y) * ((vecNor.x * (pPos->x - pos[0].x)) + (vecNor.z * (pPos->z - pos[0].z))));
-
-					if (fPosY >= pPos->y)
-					{
-						pPos->y = fPosY;
-						//pMove->y = 0.0f;
-						bLand = true;
-						PrintDebugProc("Landing...\n");
-					}
-				}
+			if (pIdxTri[0] == pIdxTri[1] || pIdxTri[1] == pIdxTri[2])
+			{ // 縮退三角形(段の折り返し)は無視
+				continue;
 			}
 
-			/*** 頂点バッファの設定を終了 ***/
-			pField->pVtxBuff->Unlock();
+			/*** 三角形の頂点をワールド座標で取得 ***/
+			D3DXVECTOR3 aPosTri[3];		// 三角形の頂点
+			for (int nCntVtx = 0; nCntVtx < 3; nCntVtx++)
+			{
+				D3DXVec3TransformCoord(&aPosTri[nCntVtx], &pVtx[pIdxTri[nCntVtx]].pos, &pField->mtxWorld);
+			}
+
+			float fHeight = 0.0f;					// この地点の地面の高さ
+			D3DXVECTOR3 nor = D3DXVECTOR3_NULL;		// 面の法線
+
+			if (GetTriangleHeight(pPos, aPosTri, (nCntPrim % 2) == 1, &fHeight, &nor) && fHeight >= pPos->y)
+			{ // 三角形の内側で、地面より下にいる → 地面の高さへ
+				pPos->y = fHeight;
+				bLand = true;
+
+				if (pVecNor != NULL)
+				{
+					*pVecNor = nor;
+				}
+			}
 		}
+
+		pField->pVtxBuff->Unlock();
 	}
 
 	return bLand;
+}
+
+//==================================================================================
+// --- 真上から見て三角形の内側にいれば、その地点の面の高さと法線を求める ---
+// bOdd : トライアングルストリップの奇数番目の三角形か (頂点の並びが逆回りになる)
+// 戻り値 : 三角形の内側にいるか
+//==================================================================================
+static bool GetTriangleHeight(const D3DXVECTOR3 *pPos, const D3DXVECTOR3 aPosTri[3], bool bOdd, float *pHeight, D3DXVECTOR3 *pNor)
+{
+	float afCross[3] = {};		// 各辺と位置の外積(XZ平面)
+
+	for (int nCntLine = 0; nCntLine < 3; nCntLine++)
+	{
+		D3DXVECTOR3 vecLine = aPosTri[(nCntLine + 1) % 3] - aPosTri[nCntLine];		// 辺のベクトル
+		D3DXVECTOR3 vecToPos = *pPos - aPosTri[nCntLine];							// 辺の始点 → 位置
+
+		afCross[nCntLine] = (vecLine.z * vecToPos.x) - (vecLine.x * vecToPos.z);
+	}
+
+	/*** 内側判定 (偶数番目は全て正、奇数番目は全て負で内側) ***/
+	if (bOdd == false && (afCross[0] > 0 && afCross[1] > 0 && afCross[2] > 0) == false) return false;
+	if (bOdd == true && (afCross[0] < 0 && afCross[1] < 0 && afCross[2] < 0) == false) return false;
+
+	/*** 面の法線 (奇数番目は裏返す) ***/
+	D3DXVECTOR3 vecEdge0 = aPosTri[1] - aPosTri[0];		// 辺0
+	D3DXVECTOR3 vecEdge1 = aPosTri[2] - aPosTri[0];		// 辺1
+	D3DXVECTOR3 nor;										// 法線
+
+	D3DXVec3Cross(&nor, &vecEdge0, &vecEdge1);
+	if (bOdd) nor *= -1;
+	D3DXVec3Normalize(&nor, &nor);
+
+	/*** 平面の方程式から高さを求める ***/
+	float fHeight = aPosTri[0].y - ((1.0f / nor.y) * ((nor.x * (pPos->x - aPosTri[0].x)) + (nor.z * (pPos->z - aPosTri[0].z))));
+
+	if (bOdd == false)
+	{ // 偶数番目は絶対値を取る (元の仕様)
+		fHeight = fabsf(fHeight);
+	}
+
+	*pHeight = fHeight;
+	*pNor = nor;
+
+	return true;
 }

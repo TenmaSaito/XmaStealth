@@ -1,58 +1,52 @@
-//================================================================================================================
+//==================================================================================
 //
-// DirectXのビルボードエフェクト表示処理 [effect.cpp]
-// Author : TENMA
+// エフェクト(加算合成のビルボード粒子)の処理 [effect.cpp]
+// Author : TENMA SAITO
 //
-//================================================================================================================
+//==================================================================================
 //**********************************************************************************
-//*** インクルードファイル ***
+// *** インクルードファイル ***
 //**********************************************************************************
 #include "effect.h"
 #include "loadxfile.h"
 
-//*************************************************************************************************
-//*** マクロ定義 ***
-//*************************************************************************************************
-#define EFFECT_SIZE_X		(3)			// エフェクトの基本サイズ - X
-#define EFFECT_SIZE_Z		(3)			// エフェクトの基本サイズ - Y
-#define EFFECT_SPD			(2.0f)		// エフェクトの移動スピード
-#define EFFECT_WDSPD		(0.1f)		// エフェクトの拡縮スピード
-#define MAX_EFFECT			(4096)		// エフェクトの最大出現数
-#define EFFECT_LIFE			(10)		// エフェクトの体力
+//**********************************************************************************
+// *** マクロ定義 ***
+//**********************************************************************************
+#define MAX_EFFECT			(8000)		// エフェクトの最大出現数
+#define EFFECT_LIFE			(10)		// 寿命を指定しなかった時の寿命(フレーム)
+#define EFFECT_ALPHA_REF	(254)		// アルファテストの基準値
+#define EFFECT_LIFE_COLOR	D3DXCOLOR(0.0f, 1.0f, 0.0f, 1.0f)	// 寿命を指定した時の色(緑)
 
-//*************************************************************************************************
-//*** 弾丸構造体の定義 ***
-//*************************************************************************************************
+//**********************************************************************************
+// *** エフェクト構造体の定義 ***
+//**********************************************************************************
 typedef struct
 {
 	D3DXVECTOR3 pos;		// 位置
 	D3DXVECTOR3 move;		// 移動量
 	D3DXMATRIX mtxWorld;	// ワールドマトリックス
 	D3DXCOLOR col;			// 色
-	int nLife;				// 体力
-	int nDrawNum;			// 描画順番
-	float fWidth;			// 幅
-	float fHeight;			// 高さ
+	int nLife;				// 寿命(フレーム)
+	float fWidth;			// 幅の半分
+	float fHeight;			// 高さの半分
 	bool bUse;				// 使っているか
-}Effect;
+} Effect;
 
-//*************************************************************************************************
-//*** グローバル変数 ***
-//*************************************************************************************************
-LPDIRECT3DVERTEXBUFFER9 g_pVtxBuffEffect = NULL;	// 頂点バッファのポインタ
-Effect g_aEffect[MAX_EFFECT];						// 弾丸の情報
-D3DXVECTOR3 g_posEffect;							// ポリゴンの位置
-D3DXMATRIX g_mtxWorldEffect;						// ワールドマトリックス
-int g_nIndexTextureEffect;							// テクスチャインデックス
+//**********************************************************************************
+// *** グローバル変数 ***
+//**********************************************************************************
+static LPDIRECT3DVERTEXBUFFER9 g_pVtxBuffEffect = NULL;		// 頂点バッファのポインタ(全エフェクト分)
+static Effect g_aEffect[MAX_EFFECT];						// エフェクトの情報
+static int g_nIndexTextureEffect;							// テクスチャ番号
 
-//================================================================================================================
+//==================================================================================
 // --- エフェクトの初期化処理 ---
-//================================================================================================================
+//==================================================================================
 void InitEffect(void)
 {
-	/*** デバイスの取得 ***/
-	LPDIRECT3DDEVICE9 pDevice = GetDevice();
-	VERTEX_3D *pVtx;					// 頂点情報へのポインタ
+	LPDIRECT3DDEVICE9 pDevice = GetDevice();		// デバイス
+	VERTEX_3D *pVtx = NULL;							// 頂点情報へのポインタ
 
 	/*** 各変数の初期化 ***/
 	for (int nCntEffect = 0; nCntEffect < MAX_EFFECT; nCntEffect++)
@@ -69,247 +63,208 @@ void InitEffect(void)
 
 	/*** 頂点バッファの生成 ***/
 	pDevice->CreateVertexBuffer(sizeof(VERTEX_3D) * 4 * MAX_EFFECT,
-								D3DUSAGE_WRITEONLY,
-								FVF_VERTEX_3D,
-								D3DPOOL_MANAGED,
-								&g_pVtxBuffEffect,
-								NULL);
+		D3DUSAGE_WRITEONLY,
+		FVF_VERTEX_3D,
+		D3DPOOL_MANAGED,
+		&g_pVtxBuffEffect,
+		NULL);
 
-	/*** 頂点バッファの設定 ***/
+	/*** 頂点情報の初期設定 (大きさ0の板) ***/
 	g_pVtxBuffEffect->Lock(0, 0, (void**)&pVtx, 0);
 
-	/*** 頂点座標の設定の設定 ***/
-	for (int nCntEffect = 0; nCntEffect < MAX_EFFECT; nCntEffect++)
+	for (int nCntEffect = 0; nCntEffect < MAX_EFFECT; nCntEffect++, pVtx += 4)
 	{
-		pVtx[0].pos.x = -g_aEffect[nCntEffect].fWidth;
-		pVtx[0].pos.y = g_aEffect[nCntEffect].fHeight;
-		pVtx[0].pos.z = 0.0f;
+		for (int nCntVtx = 0; nCntVtx < 4; nCntVtx++)
+		{
+			pVtx[nCntVtx].pos = D3DXVECTOR3_NULL;
+			pVtx[nCntVtx].nor = D3DXVECTOR3(0.0f, 0.0f, -1.0f);		// 法線(手前向き)
+			pVtx[nCntVtx].col = D3DXCOLOR_NULL;
+		}
 
-		pVtx[1].pos.x = g_aEffect[nCntEffect].fWidth;
-		pVtx[1].pos.y = g_aEffect[nCntEffect].fHeight;
-		pVtx[1].pos.z = 0.0f;
-
-		pVtx[2].pos.x = -g_aEffect[nCntEffect].fWidth;
-		pVtx[2].pos.y = -g_aEffect[nCntEffect].fHeight;
-		pVtx[2].pos.z = 0.0f;
-
-		pVtx[3].pos.x = g_aEffect[nCntEffect].fWidth;
-		pVtx[3].pos.y = -g_aEffect[nCntEffect].fHeight;
-		pVtx[3].pos.z = 0.0f;
-
-		/*** 法線ベクトルの設定 ***/
-		pVtx[0].nor = D3DXVECTOR3(0.0f, 0.0f, -1.0f);
-		pVtx[1].nor = D3DXVECTOR3(0.0f, 0.0f, -1.0f);
-		pVtx[2].nor = D3DXVECTOR3(0.0f, 0.0f, -1.0f);
-		pVtx[3].nor = D3DXVECTOR3(0.0f, 0.0f, -1.0f);
-
-		/*** 頂点カラー設定 ***/
-		pVtx[0].col = D3DXCOLOR_NULL;
-		pVtx[1].col = D3DXCOLOR_NULL;
-		pVtx[2].col = D3DXCOLOR_NULL;
-		pVtx[3].col = D3DXCOLOR_NULL;
-
-		/*** テクスチャ座標の設定 ***/
 		pVtx[0].tex = D3DXVECTOR2(0.0f, 0.0f);
 		pVtx[1].tex = D3DXVECTOR2(1.0f, 0.0f);
 		pVtx[2].tex = D3DXVECTOR2(0.0f, 1.0f);
 		pVtx[3].tex = D3DXVECTOR2(1.0f, 1.0f);
-
-		pVtx += 4;
 	}
 
-	/*** 頂点バッファの設定を終了 ***/
 	g_pVtxBuffEffect->Unlock();
 }
 
-//================================================================================================================
+//==================================================================================
 // --- エフェクトの終了処理 ---
-//================================================================================================================
+//==================================================================================
 void UninitEffect(void)
 {
 	/*** 頂点バッファの破棄 ***/
-	if (g_pVtxBuffEffect != NULL)
-	{
-		g_pVtxBuffEffect->Release();
-		g_pVtxBuffEffect = NULL;
-	}
+	RELEASE(g_pVtxBuffEffect);
 }
 
-//================================================================================================================
-// --- エフェクトの更新処理 ---
-//================================================================================================================
+//==================================================================================
+// --- エフェクトの更新処理 (移動と寿命) ---
+//==================================================================================
 void UpdateEffect(void)
 {
 	for (int nCntEffect = 0; nCntEffect < MAX_EFFECT; nCntEffect++)
 	{
-		if (g_aEffect[nCntEffect].bUse == true)
-		{
-			g_aEffect[nCntEffect].pos.x += g_aEffect[nCntEffect].move.x;
-			g_aEffect[nCntEffect].pos.y += g_aEffect[nCntEffect].move.y;
-			g_aEffect[nCntEffect].pos.z += g_aEffect[nCntEffect].move.z;
+		Effect *pEffect = &g_aEffect[nCntEffect];		// 更新するエフェクト
 
-			g_aEffect[nCntEffect].nLife--;
-			if (g_aEffect[nCntEffect].nLife <= 0)
-			{
-				g_aEffect[nCntEffect].bUse = false;
-			}
+		if (pEffect->bUse == false)
+		{ // 未使用
+			continue;
+		}
+
+		pEffect->pos += pEffect->move;
+
+		pEffect->nLife--;
+		if (pEffect->nLife <= 0)
+		{ // 寿命が尽きたら消える
+			pEffect->bUse = false;
 		}
 	}
 }
-//================================================================================================================
+
+//==================================================================================
 // --- エフェクトの描画処理 ---
-//================================================================================================================
+//==================================================================================
 void DrawEffect(void)
 {
-	/*** デバイスの取得 ***/
-	LPDIRECT3DDEVICE9 pDevice = GetDevice();
-	D3DXMATRIX mtxTrans;		// 計算用マトリックス
-	D3DXMATRIX mtxView;			// ビューマトリックスの取得用
-	
-	/*** Zテストを無効にする ***/
+	LPDIRECT3DDEVICE9 pDevice = GetDevice();		// デバイス
+	D3DXMATRIX mtxTrans;							// 平行移動用マトリックス
+	D3DXMATRIX mtxView;								// カメラのビューマトリックス
+
+	/*** Zバッファへの書き込みを無効にする ***/
 	pDevice->SetRenderState(D3DRS_ZWRITEENABLE, FALSE);
 	pDevice->SetRenderState(D3DRS_ZFUNC, D3DCMP_LESS);
 
-	// アルファブレンディングを加算合成に設定！
+	/*** アルファブレンディングを加算合成に設定 ***/
 	pDevice->SetRenderState(D3DRS_BLENDOP, D3DBLENDOP_ADD);
 	pDevice->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_SRCALPHA);
 	pDevice->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_ONE);
 
 	/*** アルファテストを有効にする ***/
-	pDevice->SetRenderState(D3DRS_ALPHATESTENABLE, TRUE);		// アルファテストを有効
-	pDevice->SetRenderState(D3DRS_ALPHAFUNC, D3DCMP_GREATER);	// 基準値よりも大きい場合にZバッファに書き込み
-	pDevice->SetRenderState(D3DRS_ALPHAREF, 254);				// 基準値
+	pDevice->SetRenderState(D3DRS_ALPHATESTENABLE, TRUE);
+	pDevice->SetRenderState(D3DRS_ALPHAFUNC, D3DCMP_GREATER);
+	pDevice->SetRenderState(D3DRS_ALPHAREF, EFFECT_ALPHA_REF);
 
 	LIGHTING(pDevice, FALSE);
 
+	/*** カメラのビューマトリックスを取得 ***/
+	pDevice->GetTransform(D3DTS_VIEW, &mtxView);
+
+	/*** 頂点バッファ・テクスチャの設定 (全エフェクト共通) ***/
+	pDevice->SetStreamSource(0, g_pVtxBuffEffect, 0, sizeof(VERTEX_3D));
+	pDevice->SetFVF(FVF_VERTEX_3D);
+	pDevice->SetTexture(0, GetTexture(g_nIndexTextureEffect));
+
 	for (int nCntEffect = 0; nCntEffect < MAX_EFFECT; nCntEffect++)
 	{
-		if (g_aEffect[nCntEffect].bUse == true)
-		{
-			/*** ワールドマトリックスの初期化 ***/
-			D3DXMatrixIdentity(&g_aEffect[nCntEffect].mtxWorld);
+		Effect *pEffect = &g_aEffect[nCntEffect];		// 描画するエフェクト
 
-			/*** カメラのビューマトリックスを取得 ***/
-			pDevice->GetTransform(D3DTS_VIEW, &mtxView);
-
-			/*** マトリックスの逆行列を求める (※ 位置を反映する前に必ず行うこと！) ***/
-			D3DXMatrixInverse(&g_aEffect[nCntEffect].mtxWorld, NULL, &mtxView);
-			/** 逆行列によって入ってしまった位置情報を初期化 **/
-			g_aEffect[nCntEffect].mtxWorld._41 = 0.0f;
-			g_aEffect[nCntEffect].mtxWorld._42 = 0.0f;
-			g_aEffect[nCntEffect].mtxWorld._43 = 0.0f;
-
-			/*** 位置を反映 (※ 向きを反映したのちに行うこと！) ***/
-			D3DXMatrixTranslation(&mtxTrans,
-				g_aEffect[nCntEffect].pos.x,
-				g_aEffect[nCntEffect].pos.y,
-				g_aEffect[nCntEffect].pos.z);
-
-			D3DXMatrixMultiply(&g_aEffect[nCntEffect].mtxWorld, &g_aEffect[nCntEffect].mtxWorld, &mtxTrans);
-
-			/*** ワールドマトリックスの設定 ***/
-			pDevice->SetTransform(D3DTS_WORLD, &g_aEffect[nCntEffect].mtxWorld);
-
-			/*** 頂点バッファをデータストリームに設定 ***/
-			pDevice->SetStreamSource(0, g_pVtxBuffEffect, 0, sizeof(VERTEX_3D));
-
-			/*** 頂点フォーマットの設定 ***/
-			pDevice->SetFVF(FVF_VERTEX_3D);
-
-			/*** テクスチャの設定 ***/
-			pDevice->SetTexture(0, GetTexture(g_nIndexTextureEffect));
-
-			/*** ポリゴンの描画 ***/
-			pDevice->DrawPrimitive(D3DPT_TRIANGLESTRIP,		// プリミティブの種類
-				4 * nCntEffect,								// 描画する最初の頂点インデックス
-				2);											// 描画するプリミティブの数
+		if (pEffect->bUse == false)
+		{ // 未使用
+			continue;
 		}
+
+		/*** ビューの逆行列で常にカメラの方を向かせる (平行移動成分は消す) ***/
+		D3DXMatrixInverse(&pEffect->mtxWorld, NULL, &mtxView);
+		pEffect->mtxWorld._41 = 0.0f;
+		pEffect->mtxWorld._42 = 0.0f;
+		pEffect->mtxWorld._43 = 0.0f;
+
+		/*** 位置を反映 ***/
+		D3DXMatrixTranslation(&mtxTrans, pEffect->pos.x, pEffect->pos.y, pEffect->pos.z);
+		D3DXMatrixMultiply(&pEffect->mtxWorld, &pEffect->mtxWorld, &mtxTrans);
+
+		pDevice->SetTransform(D3DTS_WORLD, &pEffect->mtxWorld);
+
+		/*** ポリゴンの描画 ***/
+		pDevice->DrawPrimitive(D3DPT_TRIANGLESTRIP, 4 * nCntEffect, 2);
 	}
 
 	/*** アルファテストを無効にする ***/
-	pDevice->SetRenderState(D3DRS_ALPHATESTENABLE, FALSE);		// アルファテストを無効化
-	pDevice->SetRenderState(D3DRS_ALPHAFUNC, D3DCMP_ALWAYS);	// 無条件にZバッファに書き込み
-	pDevice->SetRenderState(D3DRS_ALPHAREF, 0);					// 基準値
+	pDevice->SetRenderState(D3DRS_ALPHATESTENABLE, FALSE);
+	pDevice->SetRenderState(D3DRS_ALPHAFUNC, D3DCMP_ALWAYS);
+	pDevice->SetRenderState(D3DRS_ALPHAREF, 0);
 
-	// アルファブレンディングを元に戻す！！(重要！)
+	/*** アルファブレンディングを通常に戻す (重要！) ***/
 	pDevice->SetRenderState(D3DRS_BLENDOP, D3DBLENDOP_ADD);
 	pDevice->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_SRCALPHA);
 	pDevice->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_INVSRCALPHA);
 
-	/*** Zテストを無効にする ***/
+	/*** Zバッファの設定を戻す ***/
 	pDevice->SetRenderState(D3DRS_ZFUNC, D3DCMP_LESSEQUAL);
 	pDevice->SetRenderState(D3DRS_ZWRITEENABLE, TRUE);
 
 	LIGHTING(pDevice, TRUE);
 }
 
-//================================================================================================================
+//==================================================================================
 // --- エフェクトの発生処理 ---
-//================================================================================================================
+// nLife を省略(-1)すると白色・寿命 EFFECT_LIFE、指定すると緑色・指定の寿命になる
+//==================================================================================
 void SetEffect(D3DXVECTOR3 pos, D3DXVECTOR3 rot, float fSpd, float fWidth, float fHeight, int nLife)
 {
-	VERTEX_3D* pVtx;					// 頂点情報へのポインタ
+	if (nLife == -1)
+	{
+		SetEffectEx(pos, rot, D3DXCOLOR_NULL, fSpd, fWidth, fHeight, EFFECT_LIFE);
+	}
+	else
+	{
+		SetEffectEx(pos, rot, EFFECT_LIFE_COLOR, fSpd, fWidth, fHeight, nLife);
+	}
+}
 
-	/*** 頂点バッファの設定 ***/
-	g_pVtxBuffEffect->Lock(0, 0, (void**)&pVtx, 0);
+//==================================================================================
+// --- エフェクトの発生処理 (色・寿命を指定) ---
+// rot : 移動方向 (正規化して使う)
+//==================================================================================
+void SetEffectEx(D3DXVECTOR3 pos, D3DXVECTOR3 rot, D3DXCOLOR col, float fSpd, float fWidth, float fHeight, int nLife)
+{
+	VERTEX_3D *pVtx = NULL;		// 頂点情報へのポインタ
 
 	for (int nCntEffect = 0; nCntEffect < MAX_EFFECT; nCntEffect++)
 	{
-		if (g_aEffect[nCntEffect].bUse != true)
-		{
-			D3DXVec3Normalize(&rot, &rot);
+		Effect *pEffect = &g_aEffect[nCntEffect];		// 発生させるエフェクト
 
-			g_aEffect[nCntEffect].pos = pos;
-			g_aEffect[nCntEffect].fWidth = fWidth;
-			g_aEffect[nCntEffect].fHeight = fHeight;
-			g_aEffect[nCntEffect].move.x = rot.x * fSpd;
-			g_aEffect[nCntEffect].move.y = rot.y * fSpd;
-			g_aEffect[nCntEffect].move.z = rot.z * fSpd;
-			g_aEffect[nCntEffect].col = D3DXCOLOR_NULL;
-			g_aEffect[nCntEffect].nLife = EFFECT_LIFE;
-
-			if (nLife != -1)
-			{
-				g_aEffect[nCntEffect].nLife = nLife;
-				g_aEffect[nCntEffect].col = D3DXCOLOR(0.0f, 1.0f, 0.0f, 1.0f);
-			}
-
-			g_aEffect[nCntEffect].bUse = true;
-
-			pVtx[0].pos.x = -g_aEffect[nCntEffect].fWidth;
-			pVtx[0].pos.y = g_aEffect[nCntEffect].fHeight;
-			pVtx[0].pos.z = 0.0f;
-
-			pVtx[1].pos.x = g_aEffect[nCntEffect].fWidth;
-			pVtx[1].pos.y = g_aEffect[nCntEffect].fHeight;
-			pVtx[1].pos.z = 0.0f;
-
-			pVtx[2].pos.x = -g_aEffect[nCntEffect].fWidth;
-			pVtx[2].pos.y = -g_aEffect[nCntEffect].fHeight;
-			pVtx[2].pos.z = 0.0f;
-
-			pVtx[3].pos.x = g_aEffect[nCntEffect].fWidth;
-			pVtx[3].pos.y = -g_aEffect[nCntEffect].fHeight;
-			pVtx[3].pos.z = 0.0f;
-
-			pVtx[0].col = g_aEffect[nCntEffect].col;
-			pVtx[1].col = g_aEffect[nCntEffect].col;
-			pVtx[2].col = g_aEffect[nCntEffect].col;
-			pVtx[3].col = g_aEffect[nCntEffect].col;
-
-			break;
+		if (pEffect->bUse == true)
+		{ // 使用中
+			continue;
 		}
 
-		pVtx += 4;
-	}
+		/*** 情報の設定 ***/
+		D3DXVec3Normalize(&rot, &rot);
 
-	/*** 頂点バッファの設定を終了 ***/
-	g_pVtxBuffEffect->Unlock();
+		pEffect->pos = pos;
+		pEffect->fWidth = fWidth;
+		pEffect->fHeight = fHeight;
+		pEffect->move = rot * fSpd;
+		pEffect->col = col;
+		pEffect->nLife = nLife;
+		pEffect->bUse = true;
+
+		/*** このエフェクトの頂点座標・頂点カラーの設定 ***/
+		g_pVtxBuffEffect->Lock(0, 0, (void**)&pVtx, 0);
+		pVtx += 4 * nCntEffect;
+
+		pVtx[0].pos = D3DXVECTOR3(-fWidth, fHeight, 0.0f);
+		pVtx[1].pos = D3DXVECTOR3(fWidth, fHeight, 0.0f);
+		pVtx[2].pos = D3DXVECTOR3(-fWidth, -fHeight, 0.0f);
+		pVtx[3].pos = D3DXVECTOR3(fWidth, -fHeight, 0.0f);
+
+		for (int nCntVtx = 0; nCntVtx < 4; nCntVtx++)
+		{
+			pVtx[nCntVtx].col = col;
+		}
+
+		g_pVtxBuffEffect->Unlock();
+
+		return;
+	}
 }
 
-//================================================================================================================
-// --- エフェクトのテクスチャインデックス設定処理 ---
-//================================================================================================================
+//==================================================================================
+// --- エフェクトのテクスチャ番号の設定 ---
+//==================================================================================
 void SetIndexTextureEffect(int nIndexTexture)
 {
 	g_nIndexTextureEffect = nIndexTexture;

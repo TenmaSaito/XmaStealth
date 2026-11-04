@@ -1,219 +1,197 @@
-//================================================================================================================
+//==================================================================================
 //
-// DirectXの2Dポリゴン表示処理 [2Dpolygon.cpp]
-// Author : TENMA
+// 2Dポリゴン(UI画像)の表示処理 [2Dpolygon.cpp]
+// Author : TENMA SAITO
 //
-//================================================================================================================
+// InitScript で読み込んだテクスチャを、画面上の任意の位置に表示する汎用UI。
+//
+//==================================================================================
 //**********************************************************************************
-//*** インクルードファイル ***
+// *** インクルードファイル ***
 //**********************************************************************************
 #include "2Dpolygon.h"
 
-//*************************************************************************************************
-//*** マクロ定義 ***
-//*************************************************************************************************
-#define MAX_POLYGON			(256)		// 出現最大数
+//**********************************************************************************
+// *** マクロ定義 ***
+//**********************************************************************************
+#define MAX_POLYGON			(256)		// 同時に表示できるポリゴンの最大数
 
-//*************************************************************************************************
-//*** ポリゴン構造体の定義 ***
-//*************************************************************************************************
+//**********************************************************************************
+// *** ポリゴン構造体の定義 ***
+//**********************************************************************************
 typedef struct
 {
-	D3DXVECTOR3 pos;		// 位置
-	D3DXVECTOR3 rot;		// 向き
-	float fWidth;			// 横幅
-	float fSize;			// 縦もしくは横幅
-	int nIdTexture;			// テクスチャ番号
+	D3DXVECTOR3 pos;					// 中心位置
+	D3DXVECTOR3 rot;					// 向き(未使用)
+	float fWidth;						// 横幅
+	float fHeight;						// 高さ
+	int nIdxTexture;					// テクスチャ番号
 	LPDIRECT3DVERTEXBUFFER9 pVtxBuff;	// 頂点バッファのポインタ
-	bool bUse;
-}_2DPOLYGON, *LP2DPOLYGON;
+	bool bUse;							// 使っているか
+} _2DPOLYGON, *LP2DPOLYGON;
 
-//*************************************************************************************************
-//*** グローバル変数 ***
-//*************************************************************************************************
-_2DPOLYGON g_a2DPolygon[MAX_POLYGON];				// ポリゴンの情報
+//**********************************************************************************
+// *** プロトタイプ宣言 ***
+//**********************************************************************************
+static bool IsValidIndex2DPolygon(int nIdx2DPolygon);
 
-//================================================================================================================
+//**********************************************************************************
+// *** グローバル変数 ***
+//**********************************************************************************
+static _2DPOLYGON g_a2DPolygon[MAX_POLYGON];		// ポリゴンの情報
+
+//==================================================================================
 // --- ポリゴンの初期化処理 ---
-//================================================================================================================
+//==================================================================================
 void Init2DPolygon(void)
 {
-	ZeroMemory(&g_a2DPolygon[0], sizeof(_2DPOLYGON) * MAX_POLYGON);
+	ZeroMemory(&g_a2DPolygon[0], sizeof g_a2DPolygon);
 }
 
-//================================================================================================================
+//==================================================================================
 // --- ポリゴンの終了処理 ---
-//================================================================================================================
+//==================================================================================
 void Uninit2DPolygon(void)
 {
-	LP2DPOLYGON p2DPoly = &g_a2DPolygon[0];
-
-	for (int nCntRelease = 0; nCntRelease < MAX_POLYGON; nCntRelease++, p2DPoly++)
+	for (int nCntPoly = 0; nCntPoly < MAX_POLYGON; nCntPoly++)
 	{
 		/*** 頂点バッファの破棄 ***/
-		RELEASE(p2DPoly->pVtxBuff);
+		RELEASE(g_a2DPolygon[nCntPoly].pVtxBuff);
 	}
 }
 
-//================================================================================================================
+//==================================================================================
 // --- ポリゴンの更新処理 ---
-//================================================================================================================
+//==================================================================================
 void Update2DPolygon(void)
 {
-	
+
 }
 
-//================================================================================================================
+//==================================================================================
 // --- ポリゴンの描画処理 ---
-//================================================================================================================
+//==================================================================================
 void Draw2DPolygon(void)
 {
-	/*** デバイスの取得 ***/
-	LPDIRECT3DDEVICE9 pDevice = GetDevice();
-	LP2DPOLYGON p2DPoly = &g_a2DPolygon[0];
+	LPDIRECT3DDEVICE9 pDevice = GetDevice();		// デバイス
 
-	for (int nCntPoly = 0; nCntPoly < MAX_POLYGON; nCntPoly++, p2DPoly++)
+	/*** 頂点フォーマットの設定 ***/
+	pDevice->SetFVF(FVF_VERTEX_2D);
+
+	for (int nCntPoly = 0; nCntPoly < MAX_POLYGON; nCntPoly++)
 	{
-		if (p2DPoly->bUse == true)
-		{
-			/*** 頂点バッファをデータストリームに設定 ***/
-			pDevice->SetStreamSource(0, p2DPoly->pVtxBuff, 0, sizeof(VERTEX_2D));
+		LP2DPOLYGON p2DPoly = &g_a2DPolygon[nCntPoly];		// 描画するポリゴン
 
-			/*** 頂点フォーマットの設定 ***/
-			pDevice->SetFVF(FVF_VERTEX_2D);
-
-			/*** テクスチャの設定 ***/
-			pDevice->SetTexture(0, GetTexture(p2DPoly->nIdTexture));
-
-			/*** ポリゴンの描画 ***/
-			pDevice->DrawPrimitive(D3DPT_TRIANGLESTRIP,		// プリミティブの種類
-				0,											// 描画する最初の頂点インデックス
-				2);											// 描画するプリミティブの数
+		if (p2DPoly->bUse == false)
+		{ // 未使用
+			continue;
 		}
+
+		/*** 頂点バッファ・テクスチャの設定 ***/
+		pDevice->SetStreamSource(0, p2DPoly->pVtxBuff, 0, sizeof(VERTEX_2D));
+		pDevice->SetTexture(0, GetTexture(p2DPoly->nIdxTexture));
+
+		/*** ポリゴンの描画 ***/
+		pDevice->DrawPrimitive(D3DPT_TRIANGLESTRIP, 0, 2);
 	}
 }
 
-//================================================================================================================
+//==================================================================================
 // --- ポリゴンの設置処理 ---
-//================================================================================================================
-int Set2DPolygon(D3DXVECTOR3 pos, D3DXVECTOR3 rot, D3DXVECTOR2 size, int nIdTexture)
+// 戻り値 : 設置したポリゴンの番号 (空きが無ければ -1)
+//==================================================================================
+int Set2DPolygon(D3DXVECTOR3 pos, D3DXVECTOR3 rot, D3DXVECTOR2 size, int nIdxTexture)
 {
-	/*** デバイスの取得 ***/
-	LPDIRECT3DDEVICE9 pDevice = GetDevice();
-	LP2DPOLYGON p2DPoly = &g_a2DPolygon[0];
-	VERTEX_2D *pVtx;					// 頂点情報へのポインタ
+	LPDIRECT3DDEVICE9 pDevice = GetDevice();		// デバイス
+	VERTEX_2D *pVtx = NULL;							// 頂点情報へのポインタ
 
-	for (int nCntPoly = 0; nCntPoly < MAX_POLYGON; nCntPoly++, p2DPoly++)
+	for (int nCntPoly = 0; nCntPoly < MAX_POLYGON; nCntPoly++)
 	{
-		if (p2DPoly->bUse != true)
-		{
-			p2DPoly->pos = pos;
-			p2DPoly->fWidth = size.x;
-			p2DPoly->fSize = size.y;
-			p2DPoly->nIdTexture = nIdTexture;
-			p2DPoly->bUse = true;
+		LP2DPOLYGON p2DPoly = &g_a2DPolygon[nCntPoly];		// 設置先のポリゴン
 
-			if (p2DPoly->pVtxBuff == NULL)
-			{
-				/*** 頂点バッファの生成 ***/
-				pDevice->CreateVertexBuffer(sizeof(VERTEX_2D) * 4,
-					D3DUSAGE_WRITEONLY,
-					FVF_VERTEX_3D,
-					D3DPOOL_MANAGED,
-					&p2DPoly->pVtxBuff,
-					NULL);
-			}
-
-			/*** 頂点バッファの設定 ***/
-			p2DPoly->pVtxBuff->Lock(0, 0, (void**)&pVtx, 0);
-
-			/*** 頂点座標の設定 ***/
-			pVtx[0].pos.x = pos.x - (size.x * 0.5f);
-			pVtx[0].pos.y = pos.y - (size.y * 0.5f);
-			pVtx[0].pos.z = 0.0f;
-
-			pVtx[1].pos.x = pos.x + (size.x * 0.5f);
-			pVtx[1].pos.y = pos.y - (size.y * 0.5f);
-			pVtx[1].pos.z = 0.0f;
-
-			pVtx[2].pos.x = pos.x - (size.x * 0.5f);
-			pVtx[2].pos.y = pos.y + (size.y * 0.5f);
-			pVtx[2].pos.z = 0.0f;
-
-			pVtx[3].pos.x = pos.x + (size.x * 0.5f);
-			pVtx[3].pos.y = pos.y + (size.y * 0.5f);
-			pVtx[3].pos.z = 0.0f;
-
-			/*** 座標変換用係数の設定 ***/
-			pVtx[0].rhw = 1.0f;
-			pVtx[1].rhw = 1.0f;
-			pVtx[2].rhw = 1.0f;
-			pVtx[3].rhw = 1.0f;
-
-			/*** 頂点カラー設定 ***/
-			pVtx[0].col = D3DXCOLOR_NULL;
-			pVtx[1].col = D3DXCOLOR_NULL;
-			pVtx[2].col = D3DXCOLOR_NULL;
-			pVtx[3].col = D3DXCOLOR_NULL;
-
-			/*** テクスチャ座標の設定 ***/
-			pVtx[0].tex = D3DXVECTOR2(0.0f, 0.0f);
-			pVtx[1].tex = D3DXVECTOR2(1.0f, 0.0f);
-			pVtx[2].tex = D3DXVECTOR2(0.0f, 1.0f);
-			pVtx[3].tex = D3DXVECTOR2(1.0f, 1.0f);
-
-			/*** 頂点バッファの設定を終了 ***/
-			p2DPoly->pVtxBuff->Unlock();
-
-			return nCntPoly;
+		if (p2DPoly->bUse == true)
+		{ // 使用中
+			continue;
 		}
+
+		/*** 情報の設定 ***/
+		p2DPoly->pos = pos;
+		p2DPoly->rot = rot;
+		p2DPoly->fWidth = size.x;
+		p2DPoly->fHeight = size.y;
+		p2DPoly->nIdxTexture = nIdxTexture;
+		p2DPoly->bUse = true;
+
+		if (p2DPoly->pVtxBuff == NULL)
+		{ // 頂点バッファが未生成なら生成 (破棄済みの枠は使い回す)
+			pDevice->CreateVertexBuffer(sizeof(VERTEX_2D) * 4,
+				D3DUSAGE_WRITEONLY,
+				FVF_VERTEX_2D,
+				D3DPOOL_MANAGED,
+				&p2DPoly->pVtxBuff,
+				NULL);
+		}
+
+		/*** 頂点情報の設定 ***/
+		p2DPoly->pVtxBuff->Lock(0, 0, (void**)&pVtx, 0);
+
+		SetCenterPolygon2D(pVtx, pos, size.x, size.y);
+		SetDefaultPolygon2D(pVtx);
+
+		p2DPoly->pVtxBuff->Unlock();
+
+		return nCntPoly;
 	}
-	
+
 	return -1;
 }
 
-//================================================================================================================
+//==================================================================================
 // --- ポリゴンの移動処理 ---
-//================================================================================================================
-void SetPosition2DPolygon(int nId2DPolygon, D3DXVECTOR3 pos)
+//==================================================================================
+void SetPosition2DPolygon(int nIdx2DPolygon, D3DXVECTOR3 pos)
 {
-	if (nId2DPolygon == -1 || nId2DPolygon >= (sizeof g_a2DPolygon / sizeof(_2DPOLYGON))) return;
-	LP2DPOLYGON p2DPoly = &g_a2DPolygon[nId2DPolygon];
-	VERTEX_2D *pVtx;					// 頂点情報へのポインタ
+	if (IsValidIndex2DPolygon(nIdx2DPolygon) == false)
+	{ // 番号が範囲外
+		return;
+	}
+
+	LP2DPOLYGON p2DPoly = &g_a2DPolygon[nIdx2DPolygon];		// 移動するポリゴン
+	VERTEX_2D *pVtx = NULL;									// 頂点情報へのポインタ
 
 	p2DPoly->pos = pos;
 
-	/*** 頂点バッファの設定 ***/
+	/*** 頂点座標の更新 ***/
 	p2DPoly->pVtxBuff->Lock(0, 0, (void**)&pVtx, 0);
 
-	/*** 頂点座標の設定 ***/
-	pVtx[0].pos.x = pos.x - (p2DPoly->fWidth * 0.5f);
-	pVtx[0].pos.y = pos.y - (p2DPoly->fSize * 0.5f);
-	pVtx[0].pos.z = 0.0f;
+	SetCenterPolygon2D(pVtx, pos, p2DPoly->fWidth, p2DPoly->fHeight);
 
-	pVtx[1].pos.x = pos.x + (p2DPoly->fWidth * 0.5f);
-	pVtx[1].pos.y = pos.y - (p2DPoly->fSize * 0.5f);
-	pVtx[1].pos.z = 0.0f;
-
-	pVtx[2].pos.x = pos.x - (p2DPoly->fWidth * 0.5f);
-	pVtx[2].pos.y = pos.y + (p2DPoly->fSize * 0.5f);
-	pVtx[2].pos.z = 0.0f;
-
-	pVtx[3].pos.x = pos.x + (p2DPoly->fWidth * 0.5f);
-	pVtx[3].pos.y = pos.y + (p2DPoly->fSize * 0.5f);
-	pVtx[3].pos.z = 0.0f;
-
-	/*** 頂点バッファの設定を終了 ***/
 	p2DPoly->pVtxBuff->Unlock();
 }
 
-//================================================================================================================
-// --- ポリゴンの移動処理 ---
-//================================================================================================================
+//==================================================================================
+// --- ポリゴンの消去処理 ---
+// ※ ゲーム画面では UI を消さない仕様のため、何もしない
+//==================================================================================
 void Destroy2DPolygon(int nIdx2DPolygon)
 {
-	if (nIdx2DPolygon == -1 || nIdx2DPolygon >= (sizeof g_a2DPolygon / sizeof(_2DPOLYGON))) return;
-	LP2DPOLYGON p2DPoly = &g_a2DPolygon[nIdx2DPolygon];
+	if (GetMode() == MODE_GAME)
+	{
+		return;
+	}
 
-	p2DPoly->bUse = false;
+	if (IsValidIndex2DPolygon(nIdx2DPolygon) == false)
+	{ // 番号が範囲外
+		return;
+	}
+
+	g_a2DPolygon[nIdx2DPolygon].bUse = false;
+}
+
+//==================================================================================
+// --- ポリゴン番号が範囲内か ---
+//==================================================================================
+static bool IsValidIndex2DPolygon(int nIdx2DPolygon)
+{
+	return (nIdx2DPolygon >= 0 && nIdx2DPolygon < MAX_POLYGON);
 }

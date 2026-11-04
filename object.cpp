@@ -1,648 +1,546 @@
-//================================================================================================================
+//==================================================================================
 //
-// DirectXのXファイル表示処理 [object.cpp]
-// Author : TENMA
+// Xファイルオブジェクト(家具などの配置物)の処理 [object.cpp]
+// Author : TENMA SAITO
 //
-//================================================================================================================
+// g_aObjectInfo : 読み込んだモデル(メッシュ・マテリアル・テクスチャ・大きさ)
+// g_aObject     : 配置したオブジェクト(どのモデルをどこに置いたか)
+//
+//==================================================================================
 //**********************************************************************************
-//*** インクルードファイル ***
+// *** インクルードファイル ***
 //**********************************************************************************
 #include "object.h"
 #include "wall.h"
 #include "effect.h"
-#include <assert.h>
 
-//*************************************************************************************************
-//*** マクロ定義 ***
-//*************************************************************************************************
-#define OBJECT_SIZE_X		(100)		// モデルの基本サイズ - X
-#define OBJECT_SIZE_Z		(150)		// モデルの基本サイズ - Y
-#define OBJECT_SPD			(2.0f)		// モデルの移動スピード
-#define OBJECT_ROTSPD		(0.1f)		// モデルの回転スピード
-#define OBJECT_WDSPD		(0.1f)		// モデルの拡縮スピード
-#define MAX_TEXTURE			(14)		// 読み込むテクスチャの最大数
+//**********************************************************************************
+// *** マクロ定義 ***
+//**********************************************************************************
+#define VTX_MIN_INIT		(10000.0f)		// 頂点の最小値を求める時の初期値
+#define VTX_MAX_INIT		(-10000.0f)		// 頂点の最大値を求める時の初期値
 
-//*************************************************************************************************
-//*** グローバル変数 ***
-//*************************************************************************************************
-ObjectInfo g_aObjectInfo[MAX_OBJECT];		// オブジェクト情報
-Object g_aObject[MAX_OBJECT];				// モデルの情報
-D3DXVECTOR3 g_aPos[MAX_OBJECT][6];			// 最大最小値の各座標取得用
-int g_nCurrentObject;						// 現在のモデル数
-int g_nCountCollision;						// モデルにぶつかった回数
+// --- g_aPos の添字 (各軸の最小・最大を取った頂点) ---
+#define VTXIDX_MIN_X		(0)				// X が最小の頂点
+#define VTXIDX_MAX_X		(1)				// X が最大の頂点
+#define VTXIDX_MIN_Y		(2)				// Y が最小の頂点
+#define VTXIDX_MAX_Y		(3)				// Y が最大の頂点
+#define VTXIDX_MIN_Z		(4)				// Z が最小の頂点
+#define VTXIDX_MAX_Z		(5)				// Z が最大の頂点
+#define VTXIDX_MAX			(6)				// 添字の数
 
-//================================================================================================================
-// --- Xファイル表示の初期化処理 ---
-//================================================================================================================
+//**********************************************************************************
+// *** プロトタイプ宣言 ***
+//**********************************************************************************
+static void LoadObjectTexture(LPOBJECTINFO pInfo, const char *pXFileName);
+static void CalcObjectSize(int nIdxInfo);
+static bool CollisionObjectRect(const Object *pObject, D3DXVECTOR3 *pPos, D3DXVECTOR3 *pPosOld, D3DXVECTOR3 *pMove, bool *pColl);
+static bool CollisionObjectCross(const Object *pObject, D3DXVECTOR3 *pPos, D3DXVECTOR3 *pPosOld, D3DXVECTOR3 *pMove, float fHeight, bool *pColl);
+static D3DXVECTOR3 GetRotatedCorner(const Object *pObject, float fOffsetX, float fOffsetZ);
+
+//**********************************************************************************
+// *** グローバル変数 ***
+//**********************************************************************************
+static ObjectInfo g_aObjectInfo[MAX_OBJECT];			// 読み込んだモデルの情報
+static Object g_aObject[MAX_OBJECT];					// 配置したオブジェクトの情報
+static D3DXVECTOR3 g_aPos[MAX_OBJECT][VTXIDX_MAX];		// 各軸の最小・最大を取った頂点(モデルごと)
+static int g_nCurrentObject;							// 配置したオブジェクトの数
+static int g_nCountCollision;							// Z方向に押し戻された回数(直近の判定)
+static int g_nCounterObjectInfo;						// 読み込んだモデルの数
+
+//==================================================================================
+// --- オブジェクトの初期化処理 ---
+//==================================================================================
 void InitObject(void)
 {
-	/*** デバイスの取得 ***/
-	LPDIRECT3DDEVICE9 pDevice = GetDevice();
+	ZeroMemory(&g_aObject[0], sizeof g_aObject);
+	ZeroMemory(&g_aObjectInfo[0], sizeof g_aObjectInfo);
+	ZeroMemory(&g_aPos[0][0], sizeof g_aPos);
 
-	/*** 各変数の初期化 ***/
-	for (int nCntObject = 0; nCntObject < MAX_OBJECT; nCntObject++)
+	for (int nCntInfo = 0; nCntInfo < MAX_OBJECT; nCntInfo++)
 	{
-		ZeroMemory(&g_aObject[nCntObject], sizeof(Object));
-		ZeroMemory(&g_aObjectInfo[nCntObject], sizeof(ObjectInfo));
-
-		g_aObjectInfo[nCntObject].mtxMin = D3DXVECTOR3(10000.0f, 10000.0f, 10000.0f);
-		g_aObjectInfo[nCntObject].mtxMax = D3DXVECTOR3(-10000.0f, -10000.0f, -10000.0f);
+		g_aObjectInfo[nCntInfo].mtxMin = D3DXVECTOR3(VTX_MIN_INIT, VTX_MIN_INIT, VTX_MIN_INIT);
+		g_aObjectInfo[nCntInfo].mtxMax = D3DXVECTOR3(VTX_MAX_INIT, VTX_MAX_INIT, VTX_MAX_INIT);
 	}
 
 	g_nCurrentObject = 0;
 	g_nCountCollision = 0;
+	g_nCounterObjectInfo = 0;
 }
 
-//================================================================================================================
-// --- Xファイル表示の終了 ---
-//================================================================================================================
+//==================================================================================
+// --- オブジェクトの終了処理 (読み込んだモデルの破棄) ---
+//==================================================================================
 void UninitObject(void)
 {
-	for (int nCntObject = 0; nCntObject < MAX_OBJECT; nCntObject++)
+	for (int nCntInfo = 0; nCntInfo < MAX_OBJECT; nCntInfo++)
 	{
-		/*** メッシュの破棄 ***/
-		if ((g_aObjectInfo[nCntObject].pMesh) != NULL) 
-		{ 
-			g_aObjectInfo[nCntObject].pMesh->Release();
-			g_aObjectInfo[nCntObject].pMesh = NULL;
-		}
+		LPOBJECTINFO pInfo = &g_aObjectInfo[nCntInfo];		// 破棄するモデル
 
-		/*** マテリアルの破棄 ***/
-		if ((g_aObjectInfo[nCntObject].pBuffMat) != NULL)
-		{
-			g_aObjectInfo[nCntObject].pBuffMat->Release();
-			g_aObjectInfo[nCntObject].pBuffMat = NULL;
-		}
+		/*** メッシュ・マテリアル・テクスチャの破棄 ***/
+		RELEASE(pInfo->pMesh);
+		RELEASE(pInfo->pBuffMat);
 
-		/*** テクスチャの破棄 ***/
 		for (int nCntTex = 0; nCntTex < MAX_OBJTEXTURE; nCntTex++)
 		{
-			if ((g_aObjectInfo[nCntObject].apTexture[nCntTex]) != NULL)
-			{
-				g_aObjectInfo[nCntObject].apTexture[nCntTex]->Release();
-				g_aObjectInfo[nCntObject].apTexture[nCntTex] = NULL;
-			}
+			RELEASE(pInfo->apTexture[nCntTex]);
 		}
 	}
 }
 
-//================================================================================================================
-// --- Xファイル表示の更新 ---
-//================================================================================================================
+//==================================================================================
+// --- オブジェクトの更新処理 ---
+//==================================================================================
 void UpdateObject(void)
 {
-	
+	PrintDebugProc("%d\n", g_nCounterObjectInfo);
 }
 
-//================================================================================================================
-// --- Xファイル表示の描画 ---
-//================================================================================================================
+//==================================================================================
+// --- オブジェクトの描画処理 ---
+//==================================================================================
 void DrawObject(void)
 {
-	/*** デバイスの取得 ***/
-	LPDIRECT3DDEVICE9 pDevice = GetDevice();
-	D3DXMATRIX mtxRot, mtxTrans;		// 計算用マトリックス
-	D3DMATERIAL9 matDef;				// 現在のマテリアル保存用
-	D3DXMATERIAL *pMat;					// マテリアルデータへのポインタ
+	LPDIRECT3DDEVICE9 pDevice = GetDevice();		// デバイス
+	D3DXMATRIX mtxRot, mtxTrans;					// 計算用マトリックス
+	D3DMATERIAL9 matDef;							// 現在のマテリアル保存用
 
-	for (int nCntWall = 0; nCntWall < MAX_OBJECT; nCntWall++)
+	for (int nCntObject = 0; nCntObject < MAX_OBJECT; nCntObject++)
 	{
-		if (g_aObject[nCntWall].bUse == true && g_aObjectInfo[g_aObject[nCntWall].nType].bSafe == true)
-		{
-			/*** ワールドマトリックスの初期化 ***/
-			D3DXMatrixIdentity(&g_aObject[nCntWall].mtxWorld);
+		Object *pObject = &g_aObject[nCntObject];				// 描画するオブジェクト
+		LPOBJECTINFO pInfo = &g_aObjectInfo[pObject->nType];	// オブジェクトのモデル
 
-			/*** 向きを反映 (※ 位置を反映する前に必ず行うこと！) ***/
-			D3DXMatrixRotationYawPitchRoll(&mtxRot,
-				g_aObject[nCntWall].rot.y,			// Y軸回転
-				g_aObject[nCntWall].rot.x,			// X軸回転
-				g_aObject[nCntWall].rot.z);			// Z軸回転
-
-			D3DXMatrixMultiply(&g_aObject[nCntWall].mtxWorld, &g_aObject[nCntWall].mtxWorld, &mtxRot);
-
-			/*** 位置を反映 (※ 向きを反映したのちに行うこと！) ***/
-			D3DXMatrixTranslation(&mtxTrans,
-				g_aObject[nCntWall].pos.x,
-				g_aObject[nCntWall].pos.y,
-				g_aObject[nCntWall].pos.z);
-
-			D3DXMatrixMultiply(&g_aObject[nCntWall].mtxWorld, &g_aObject[nCntWall].mtxWorld, &mtxTrans);
-
-			/*** ワールドマトリックスの設定 ***/
-			pDevice->SetTransform(D3DTS_WORLD, &g_aObject[nCntWall].mtxWorld);
-
-			/*** 現在のマテリアルを保存 ***/
-			pDevice->GetMaterial(&matDef);
-
-			/*** マテリアルデータへのポインタを取得 ***/
-			pMat = (D3DXMATERIAL*)g_aObjectInfo[g_aObject[nCntWall].nType].pBuffMat->GetBufferPointer();
-
-			for (int nCntMat = 0; nCntMat < (int)g_aObjectInfo[g_aObject[nCntWall].nType].dwNumMat; nCntMat++)
-			{
-				/*** マテリアルの設定 ***/
-				pDevice->SetMaterial(&pMat[nCntMat].MatD3D);
-
-				/*** テクスチャの設定 ***/
-				pDevice->SetTexture(0, g_aObjectInfo[g_aObject[nCntWall].nType].apTexture[nCntMat]);
-
-				/*** モデル(パーツ)の描画 ***/
-				g_aObjectInfo[g_aObject[nCntWall].nType].pMesh->DrawSubset(nCntMat);
-			}
-
-			/*** 保存していたマテリアルを戻す！ ***/
-			pDevice->SetMaterial(&matDef);
+		if (pObject->bUse == false || pInfo->bSafe == false)
+		{ // 未使用 or モデルが読み込めていない
+			continue;
 		}
+
+		/*** ワールドマトリックスの計算 (回転 → 平行移動の順) ***/
+		D3DXMatrixIdentity(&pObject->mtxWorld);
+
+		D3DXMatrixRotationYawPitchRoll(&mtxRot, pObject->rot.y, pObject->rot.x, pObject->rot.z);
+		D3DXMatrixMultiply(&pObject->mtxWorld, &pObject->mtxWorld, &mtxRot);
+
+		D3DXMatrixTranslation(&mtxTrans, pObject->pos.x, pObject->pos.y, pObject->pos.z);
+		D3DXMatrixMultiply(&pObject->mtxWorld, &pObject->mtxWorld, &mtxTrans);
+
+		pDevice->SetTransform(D3DTS_WORLD, &pObject->mtxWorld);
+
+		/*** マテリアルごとに描画 ***/
+		pDevice->GetMaterial(&matDef);
+
+		D3DXMATERIAL *pMat = (D3DXMATERIAL*)pInfo->pBuffMat->GetBufferPointer();		// マテリアルデータ
+
+		for (int nCntMat = 0; nCntMat < (int)pInfo->dwNumMat; nCntMat++)
+		{
+			pDevice->SetMaterial(&pMat[nCntMat].MatD3D);
+			pDevice->SetTexture(0, pInfo->apTexture[nCntMat]);
+			pInfo->pMesh->DrawSubset(nCntMat);
+		}
+
+		pDevice->SetMaterial(&matDef);
 	}
 }
 
-//================================================================================================================
-// --- モデルの読み込み ---
-//================================================================================================================
+//==================================================================================
+// --- モデル(Xファイル)の読み込み ---
+// 空いている枠に読み込む (読み込んだ順に 0, 1, 2 ... の番号になる)
+//==================================================================================
 _Check_return_ HRESULT LoadObject(_In_ const char *pXFileName)
 {
-	/*** デバイスの取得 ***/
-	LPDIRECT3DDEVICE9 pDevice = GetDevice();
-	D3DXMATERIAL* pMat = NULL;		// マテリアルへのポインタ
-	HRESULT hr = E_FAIL;			// 読み込み成功判定
-	int nNumVtx = 0;				// 頂点数
-	DWORD dwSizeFVF = 0;			// 頂点フォーマットのサイズ
-	BYTE* pVtxBuff = NULL;			// 頂点バッファへのポインタ
+	LPDIRECT3DDEVICE9 pDevice = GetDevice();		// デバイス
 
-	/*** Xファイルの読み込み ***/
-	for (int nCntObject = 0; nCntObject < MAX_OBJECT; nCntObject++)
+	for (int nCntInfo = 0; nCntInfo < MAX_OBJECT; nCntInfo++)
 	{
-		if (g_aObjectInfo[nCntObject].bUse != true)
-		{
-			// 箱を使用状態に
-			g_aObjectInfo[nCntObject].bUse = true;
+		LPOBJECTINFO pInfo = &g_aObjectInfo[nCntInfo];		// 読み込み先のモデル
 
-			// マテリアルへのポインタをNULLにリセット
-			pMat = NULL;
-
-			// パスが絶対パスではないか確認
-			CheckPath(pXFileName);
-
-			// Xファイルの読み込み
-			hr = D3DXLoadMeshFromX(pXFileName,			// 読み込むXファイル名
-				D3DXMESH_SYSTEMMEM,
-				pDevice,								// デバイスポインタ
-				NULL,
-				&g_aObjectInfo[nCntObject].pBuffMat,	// マテリアルへのポインタ
-				NULL,
-				&g_aObjectInfo[nCntObject].dwNumMat,	// マテリアルの数
-				&g_aObjectInfo[nCntObject].pMesh);		// メッシュへのポインタ
-
-			// 読み込み失敗時
-			if (FAILED(hr))
-			{ // エラーを返す
-#ifdef _DEBUG
-				MessageBox(GetHandleWindow(), "Xファイルの読み込みに失敗しました。", "Error(3)", MB_ICONERROR);
-#endif
-				return E_FAIL;
-			}
-
-			/*** マテリアルデータへのポインタを取得 ***/
-			pMat = (D3DXMATERIAL*)g_aObjectInfo[nCntObject].pBuffMat->GetBufferPointer();
-
-			for (int nCntMat = 0; nCntMat < (int)g_aObjectInfo[nCntObject].dwNumMat; nCntMat++)
-			{
-				// マテリアルデータのテクスチャパスが存在すれば
-				if (pMat[nCntMat].pTextureFilename != NULL)
-				{
-					// 絶対パスの確認
-					if (CheckPath(pMat[nCntMat].pTextureFilename))
-					{
-#ifdef _DEBUG
-						GenerateMessageBox(MB_ICONERROR,
-							"Warnings!",
-							"対象Xファイルパス : %s",
-							pXFileName);
-#endif
-					}
-
-					/*** テクスチャの読み込み ***/
-					hr = D3DXCreateTextureFromFile(pDevice,
-						pMat[nCntMat].pTextureFilename,
-						&g_aObjectInfo[nCntObject].apTexture[nCntMat]);
-
-					// テクスチャ読み込み失敗時
-					if (FAILED(hr))
-					{
-#ifdef _DEBUG
-						GenerateMessageBox(MB_ICONERROR,
-							"Error (4)",
-							"Xファイルのテクスチャ読み込みに失敗しました。\n対象パス : %s",
-							&pMat[nCntMat].pTextureFilename[0]);
-#endif
-					}
-				}
-			}
-
-			/*** 頂点数を取得 ***/
-			nNumVtx = g_aObjectInfo[nCntObject].pMesh->GetNumVertices();
-
-			/*** 頂点フォーマットのサイズを取得 ***/
-			dwSizeFVF = D3DXGetFVFVertexSize(g_aObjectInfo[nCntObject].pMesh->GetFVF());
-
-			/*** 頂点バッファをロック ***/
-			g_aObjectInfo[nCntObject].pMesh->LockVertexBuffer(D3DLOCK_READONLY, (void**)&pVtxBuff);
-
-			/*** 頂点の最大、最小値を取得 ***/
-			for (int nCntVtx = 0; nCntVtx < nNumVtx; nCntVtx++)
-			{
-				D3DXVECTOR3 vtx = *(D3DXVECTOR3*)pVtxBuff;	// 頂点座標の代入
-
-				/*** 最小値を取得 ***/
-				if (g_aObjectInfo[nCntObject].mtxMin.x > vtx.x)
-				{
-					g_aObjectInfo[nCntObject].mtxMin.x = vtx.x;
-					RepairFloat(&g_aObjectInfo[nCntObject].mtxMin.x);
-					g_aPos[nCntObject][0] = vtx;
-				}
-				if (g_aObjectInfo[nCntObject].mtxMin.y > vtx.y)
-				{
-					g_aObjectInfo[nCntObject].mtxMin.y = vtx.y;
-					RepairFloat(&g_aObjectInfo[nCntObject].mtxMin.y);
-					g_aPos[nCntObject][2] = vtx;
-				}
-				if (g_aObjectInfo[nCntObject].mtxMin.z > vtx.z)
-				{
-					g_aObjectInfo[nCntObject].mtxMin.z = vtx.z;
-					RepairFloat(&g_aObjectInfo[nCntObject].mtxMin.z);
-					g_aPos[nCntObject][4] = vtx;
-				}
-
-				/*** 最大値を取得 ***/
-				if (g_aObjectInfo[nCntObject].mtxMax.x < vtx.x)
-				{
-					g_aObjectInfo[nCntObject].mtxMax.x = vtx.x;
-					RepairFloat(&g_aObjectInfo[nCntObject].mtxMax.x);
-					g_aPos[nCntObject][1] = vtx;
-				}
-				if (g_aObjectInfo[nCntObject].mtxMax.y < vtx.y)
-				{
-					g_aObjectInfo[nCntObject].mtxMax.y = vtx.y;
-					RepairFloat(&g_aObjectInfo[nCntObject].mtxMax.y);
-					g_aPos[nCntObject][3] = vtx;
-				}
-				if (g_aObjectInfo[nCntObject].mtxMax.z < vtx.z)
-				{
-					g_aObjectInfo[nCntObject].mtxMax.z = vtx.z;
-					RepairFloat(&g_aObjectInfo[nCntObject].mtxMax.z);
-					g_aPos[nCntObject][5] = vtx;
-				}
-
-				pVtxBuff += dwSizeFVF;		// 頂点フォーマットのサイズ分ポインタを進める
-			}
-
-			/*** 頂点バッファをアンロック ***/
-			g_aObjectInfo[nCntObject].pMesh->UnlockVertexBuffer();
-
-			// データの取り扱いを可能にする
-			g_aObjectInfo[nCntObject].bSafe = true;
-
-			break;
+		if (pInfo->bUse == true)
+		{ // 使用中 (読み込みに失敗した枠も使用中のまま)
+			continue;
 		}
+
+		pInfo->bUse = true;
+		g_nCounterObjectInfo++;
+
+		CheckPath(pXFileName);
+
+		/*** Xファイルの読み込み ***/
+		if (FAILED(D3DXLoadMeshFromX(pXFileName,
+			D3DXMESH_SYSTEMMEM,
+			pDevice,
+			NULL,
+			&pInfo->pBuffMat,		// マテリアル
+			NULL,
+			&pInfo->dwNumMat,		// マテリアルの数
+			&pInfo->pMesh)))		// メッシュ
+		{ // 読み込み失敗
+#ifdef _DEBUG
+			MessageBox(GetHandleWindow(), "Xファイルの読み込みに失敗しました。", "Error(3)", MB_ICONERROR);
+#endif
+			return E_FAIL;
+		}
+
+		if (pInfo->dwNumMat > MAX_OBJTEXTURE)
+		{ // テクスチャの配列に収まらないマテリアルは描画しない (配列外への書き込み防止)
+			GenerateMessageBox(MB_ICONWARNING, "Warnings!", "マテリアル数が多すぎます(%d個まで)。\n対象Xファイルパス : %s", MAX_OBJTEXTURE, pXFileName);
+			pInfo->dwNumMat = MAX_OBJTEXTURE;
+		}
+
+		LoadObjectTexture(pInfo, pXFileName);
+		CalcObjectSize(nCntInfo);
+
+		pInfo->bSafe = true;		// 参照可能にする
+
+		break;
 	}
 
-	/*** 成功 ***/
 	return S_OK;
 }
 
-//================================================================================================================
-// --- モデルの設置 ---
-//================================================================================================================
+//==================================================================================
+// --- オブジェクトの配置 ---
+// ※ pCode は現在未使用
+//==================================================================================
 void SetObject(_In_ D3DXVECTOR3 pos, _In_ D3DXVECTOR3 rot, _In_ int nType, _In_ COLLISIONTYPE collisionType, _In_opt_ const char *pCode)
 {
 	for (int nCntObject = 0; nCntObject < MAX_OBJECT; nCntObject++)
 	{
-		// もしオブジェクト構造体が使われていなければ
-		if (g_aObject[nCntObject].bUse == false)
-		{
-			// 指定されたインデックスのオブジェクト情報が安全でなければ
-			if (g_aObjectInfo[nType].bSafe == false)
-			{ // 終了
-				return;
-			}
+		Object *pObject = &g_aObject[nCntObject];		// 配置先のオブジェクト
 
-			/*** モデルの情報を適用 ***/
-			g_aObject[nCntObject].pos = pos;
-			g_aObject[nCntObject].rot = rot;
-			g_aObject[nCntObject].nType = nType;
-			g_aObject[nCntObject].collisionType = collisionType;
-
-			g_aObject[nCntObject].bUse = true;
-			g_aObject[nCntObject].fWidth = g_aObjectInfo[nType].mtxMax.x - g_aObjectInfo[nType].mtxMin.x;
-			g_aObject[nCntObject].fHeight = g_aObjectInfo[nType].mtxMax.y - g_aObjectInfo[nType].mtxMin.y;
-			g_aObject[nCntObject].fDepth = g_aObjectInfo[nType].mtxMax.z - g_aObjectInfo[nType].mtxMin.z;
-
-			g_nCurrentObject++;		// 設置したモデルの数を増加
-
-			break;
+		if (pObject->bUse == true)
+		{ // 使用中
+			continue;
 		}
+
+		if (g_aObjectInfo[nType].bSafe == false)
+		{ // モデルが読み込めていない
+			return;
+		}
+
+		LPOBJECTINFO pInfo = &g_aObjectInfo[nType];		// 配置するモデル
+
+		pObject->pos = pos;
+		pObject->rot = rot;
+		pObject->nType = nType;
+		pObject->collisionType = collisionType;
+		pObject->bUse = true;
+		pObject->fWidth = pInfo->mtxMax.x - pInfo->mtxMin.x;
+		pObject->fHeight = pInfo->mtxMax.y - pInfo->mtxMin.y;
+		pObject->fDepth = pInfo->mtxMax.z - pInfo->mtxMin.z;
+
+		g_nCurrentObject++;
+
+		return;
 	}
 }
 
-//================================================================================================================
-// --- モデルの取得 ---
-//================================================================================================================
+//==================================================================================
+// --- オブジェクトとの当たり判定 (ゲーム画面のみ) ---
+// pColl : 何かに当たったら true が入る
+// 戻り値 : オブジェクトの上に乗ったか
+//==================================================================================
 bool CollisionObject(D3DXVECTOR3 *pPos, D3DXVECTOR3 *pPosOld, D3DXVECTOR3 *pMove, float fHeight, bool *pColl)
 {
-	LPOBJECT pObject = &g_aObject[0];
-	bool bLand = false;
+	bool bLand = false;		// 上に乗ったか
+
 	g_nCountCollision = 0;
 
-	for (int nCntObject = 0; nCntObject < MAX_OBJECT; nCntObject++, pObject++)
+	if (GetMode() != MODE_GAME)
 	{
-		/*** オブジェクトが使用されているか判定 ***/
-		if (g_aObject[nCntObject].bUse == true && GetMode() == MODE_GAME)
+		return false;
+	}
+
+	for (int nCntObject = 0; nCntObject < MAX_OBJECT; nCntObject++)
+	{
+		const Object *pObject = &g_aObject[nCntObject];		// 判定するオブジェクト
+
+		if (pObject->bUse == false)
+		{ // 未使用
+			continue;
+		}
+
+		switch (pObject->collisionType)
 		{
-			D3DXVECTOR3 posVtx[4] = {};		// オブジェクトの四辺の頂点
-			D3DXVECTOR3 vecMove = D3DXVECTOR3_NULL;		// 移動ベクトル
-			D3DXVECTOR3 vecLine = D3DXVECTOR3_NULL;		// 境界線ベクトル
-			D3DXVECTOR3 vecLineA[4] = {};	// 境界線ベクトル
-			D3DXVECTOR3 vecToPos = D3DXVECTOR3_NULL;	// 位置と境界線のはじめを結んだベクトル
-			D3DXVECTOR3 vecToPosA[4] = {};	// 位置と境界線のはじめを結んだベクトル
-			D3DXVECTOR3 vecToPosOld = D3DXVECTOR3_NULL;	// 過去位置と境界線のはじめを結んだベクトル 
-			D3DXVECTOR3 vecLineNor = D3DXVECTOR3_NULL;	// 正規化した境界線ベクトル
-			float fVecPos = 0.0f;
-			float fVecPosA[4] = {};
-			float fVecPosOld = 0.0f;
-			float fPosToMove = 0.0f;					// vecToPosとの外積
-			float fLineToMove = 0.0f;					// vecLineとの外積
-			float fRate = 0.0f;							// 面積比率
-			float fVecPosToNor = 0.0f;					// 逆法線との外積
+		case COLLISIONTYPE_RECT:		// 回転を考慮しない箱
+			if (CollisionObjectRect(pObject, pPos, pPosOld, pMove, pColl)) bLand = true;
+			break;
 
-			switch (g_aObject[nCntObject].collisionType)
-			{
-			case COLLISIONTYPE_RECT:
+		case COLLISIONTYPE_CROSS:		// Y軸回転を考慮した箱 (外積で判定)
+			if (CollisionObjectCross(pObject, pPos, pPosOld, pMove, fHeight, pColl)) bLand = true;
+			break;
 
-				/*** オブジェクトにめり込んでるか判定 ***/
-				if (pPos->x >= g_aObject[nCntObject].pos.x + g_aObjectInfo[g_aObject[nCntObject].nType].mtxMin.x && pPos->x <= g_aObject[nCntObject].pos.x + g_aObjectInfo[g_aObject[nCntObject].nType].mtxMax.x
-					&& pPos->y <= g_aObject[nCntObject].pos.y + g_aObjectInfo[g_aObject[nCntObject].nType].mtxMax.y && pPos->y >= g_aObject[nCntObject].pos.y + g_aObjectInfo[g_aObject[nCntObject].nType].mtxMin.y
-					&& pPos->z >= g_aObject[nCntObject].pos.z + g_aObjectInfo[g_aObject[nCntObject].nType].mtxMin.z && pPos->z <= g_aObject[nCntObject].pos.z + g_aObjectInfo[g_aObject[nCntObject].nType].mtxMax.z)
-				{
-					if (pPosOld->x <= g_aObject[nCntObject].pos.x + g_aObjectInfo[g_aObject[nCntObject].nType].mtxMin.x)
-					{/** 過去の位置が、モデルのXの最小値よりも小さい位置にいた場合 **/
-						pPos->x = g_aObject[nCntObject].pos.x + g_aObjectInfo[g_aObject[nCntObject].nType].mtxMin.x;
-					}
-					else if (pPosOld->x >= g_aObject[nCntObject].pos.x + g_aObjectInfo[g_aObject[nCntObject].nType].mtxMax.x)
-					{/** 過去の位置が、モデルのXの最大値よりも大さい位置にいた場合 **/
-						pPos->x = g_aObject[nCntObject].pos.x + g_aObjectInfo[g_aObject[nCntObject].nType].mtxMax.x;
-					}
-
-					if (pPosOld->y < g_aObject[nCntObject].pos.y + g_aObjectInfo[g_aObject[nCntObject].nType].mtxMin.y)
-					{/** 過去の位置が、モデルのYの最小値よりも小さい位置にいた場合 **/
-						pPos->y = g_aObject[nCntObject].pos.y + g_aObjectInfo[g_aObject[nCntObject].nType].mtxMin.y;
-					}
-					else if (pPosOld->y >= g_aObject[nCntObject].pos.y + g_aObjectInfo[g_aObject[nCntObject].nType].mtxMax.y)
-					{/** 過去の位置が、モデルのYの最大値よりも大さい位置にいた場合 **/
-						pPos->y = g_aObject[nCntObject].pos.y + g_aObjectInfo[g_aObject[nCntObject].nType].mtxMax.y;
-						bLand = true;
-						pMove->y = 0.0f;
-					}
-
-					if (pPosOld->z <= g_aObject[nCntObject].pos.z + g_aObjectInfo[g_aObject[nCntObject].nType].mtxMin.z)
-					{/** 過去の位置が、モデルのZの最小値よりも小さい位置にいた場合 **/
-						pPos->z = g_aObject[nCntObject].pos.z + g_aObjectInfo[g_aObject[nCntObject].nType].mtxMin.z;
-						g_nCountCollision++;
-					}
-					else if (pPosOld->z >= g_aObject[nCntObject].pos.z + g_aObjectInfo[g_aObject[nCntObject].nType].mtxMax.z)
-					{/** 過去の位置が、モデルのZの最大値よりも大さい位置にいた場合 **/
-						pPos->z = g_aObject[nCntObject].pos.z + g_aObjectInfo[g_aObject[nCntObject].nType].mtxMax.z;
-						g_nCountCollision++;
-					}
-
-					if (pColl != NULL)
-					{
-						*pColl = true;
-					}
-				}
-
-				break;
-
-			case COLLISIONTYPE_CROSS:
-
-				POBJECTINFO pObjInfo = &g_aObjectInfo[pObject->nType];
-
-				if (pPos->y + fHeight >= pObject->pos.y + pObjInfo->mtxMin.y
-					&& pPos->y <= pObject->pos.y + pObjInfo->mtxMax.y)
-				{
-					D3DXVECTOR3 Length;
-					float fLength = 0.0f;
-					float fAngle = 0.0f;
-					bool bCollision[4] = {};
-
-					posVtx[0].x = pObject->pos.x + pObjInfo->mtxMin.x;
-					posVtx[0].y = pObject->pos.y;
-					posVtx[0].z = pObject->pos.z + pObjInfo->mtxMin.z;
-
-					Length = posVtx[0] - pObject->pos;
-
-					fLength = D3DXVec3Length(&Length);
-					fAngle = GetPosToPos(posVtx[0], pObject->pos);
-
-					posVtx[0].x = pObject->pos.x + (sinf(fAngle + pObject->rot.y) * fLength);
-					posVtx[0].y = pObject->pos.y + pObjInfo->mtxMax.y;
-					posVtx[0].z = pObject->pos.z + (cosf(fAngle + pObject->rot.y) * fLength);
-
-					posVtx[1].x = pObject->pos.x + pObjInfo->mtxMax.x;
-					posVtx[1].y = pObject->pos.y;
-					posVtx[1].z = pObject->pos.z + pObjInfo->mtxMin.z;
-
-					Length = posVtx[1] - pObject->pos;
-
-					fLength = D3DXVec3Length(&Length);
-					fAngle = GetPosToPos(posVtx[1], pObject->pos);
-
-					posVtx[1].x = pObject->pos.x + (sinf(fAngle + pObject->rot.y) * fLength);
-					posVtx[1].y = pObject->pos.y;
-					posVtx[1].z = pObject->pos.z + (cosf(fAngle + pObject->rot.y) * fLength);
-
-					posVtx[2].x = pObject->pos.x + pObjInfo->mtxMax.x;
-					posVtx[2].y = pObject->pos.y;
-					posVtx[2].z = pObject->pos.z + pObjInfo->mtxMax.z;
-
-					Length = posVtx[2] - pObject->pos;
-
-					fLength = D3DXVec3Length(&Length);
-					fAngle = GetPosToPos(posVtx[2], pObject->pos);
-
-					posVtx[2].x = pObject->pos.x + (sinf(fAngle + pObject->rot.y) * fLength);
-					posVtx[2].y = pObject->pos.y;
-					posVtx[2].z = pObject->pos.z + (cosf(fAngle + pObject->rot.y) * fLength);
-
-					posVtx[3].x = pObject->pos.x + pObjInfo->mtxMin.x;
-					posVtx[3].y = pPos->y;
-					posVtx[3].z = pObject->pos.z + pObjInfo->mtxMax.z;
-
-					Length = posVtx[3] - pObject->pos;
-
-					fLength = D3DXVec3Length(&Length);
-					fAngle = GetPosToPos(posVtx[3], pObject->pos);
-
-					posVtx[3].x = pObject->pos.x + (sinf(fAngle + pObject->rot.y) * fLength);
-					posVtx[3].y = pObject->pos.y;
-					posVtx[3].z = pObject->pos.z + (cosf(fAngle + pObject->rot.y) * fLength);
-
-					/*** 移動ベクトルの取得 ***/
-					vecMove = *pPos - *pPosOld;
-
-					for (int nCntCollision = 0; nCntCollision < 4; nCntCollision++)
-					{
-						D3DXVECTOR3 vecNor = D3DXVECTOR3_NULL;		// 壁の逆法線ベクトル
-						D3DXVECTOR3 vecCutLine = D3DXVECTOR3_NULL;	// 交点からの境界線ベクトル
-
-						vecLine = posVtx[(nCntCollision + 1) % 4] - posVtx[nCntCollision];
-						
-						RepairFloat(&vecLine.x);
-						RepairFloat(&vecLine.z);
-
-						/*** 現在位置との関係を外積を使い求める ***/
-						vecToPos = *pPos - posVtx[nCntCollision];
-
-						fVecPos = (vecLine.z * vecToPos.x) - (vecLine.x * vecToPos.z);
-
-						RepairFloat(&fVecPos);
-
-						/*** 過去位置との関係を外積を使い求める ***/
-						vecToPosOld = *pPosOld - posVtx[nCntCollision];
-
-						fVecPosOld = (vecLine.z * vecToPosOld.x) - (vecLine.x * vecToPosOld.z);
-
-						RepairFloat(&fVecPosOld);
-
-						/*** 強制位置の判定 ***/
-
-						/** 現在位置との外積 **/
-						fPosToMove = (vecToPos.z * vecMove.x) - (vecToPos.x * vecMove.z);
-
-						/** 最大値との外積 **/
-						fLineToMove = (vecLine.z * vecMove.x) - (vecLine.x * vecMove.z);
-
-						/** 面積比率の計算 **/
-						fRate = fPosToMove / fLineToMove;
-
-						vecNor.x = vecLine.z;
-						vecNor.z = -vecLine.x;
-
-						D3DXVec3Normalize(&vecNor, &vecNor);
-
-						fVecPosToNor = (vecNor.z * vecMove.x) - (vecNor.x * vecMove.z);
-
-						D3DXVECTOR3 vecF;
-						vecCutLine = vecLine;
-
-						if (fVecPosToNor == 0)
-						{
-							fVecPosToNor = fabsf(fVecPosToNor);
-							D3DXVec3Normalize(&vecCutLine, &vecCutLine);
-
-							vecF = vecCutLine * fVecPosToNor;
-						}
-						else if (fVecPosToNor > 0)
-						{
-							fVecPosToNor = fabsf(fVecPosToNor);
-							D3DXVec3Normalize(&vecCutLine, &vecCutLine);
-
-							vecF = -vecCutLine * fVecPosToNor;
-						}
-						else if (fVecPosToNor < 0)
-						{
-							fVecPosToNor = fabsf(fVecPosToNor);
-							D3DXVec3Normalize(&vecCutLine, &vecCutLine);
-
-							vecF = vecCutLine * fVecPosToNor;
-						}
-
-						/*** プレイヤーの壁のめり込み判定 ***/
-						if (fVecPos < 0 && fVecPosOld >= 0)
-						{
-							/*** もしも比率が範囲内であれば,衝突 ***/
-							if (fRate >= 0.0f && fRate <= 1.0f)
-							{
-								pPos->x = posVtx[nCntCollision].x + (vecLine.x * fRate) + vecF.x;
-								pPos->z = posVtx[nCntCollision].z + (vecLine.z * fRate) + vecF.z;
-
-								//pMove->x = pMove->x * 0.95f;
-								//pMove->z = pMove->z * 0.95f;
-							}
-						}
-
-						if (fVecPos < 0 && fVecPosOld < 0)
-						{
-							bCollision[nCntCollision] = true;
-						}
-					}
-
-					if (bCollision[0] == true
-						&& bCollision[1] == true
-						&& bCollision[2] == true
-						&& bCollision[3] == true)
-					{
-						pPos->y = pObject->pos.y + pObjInfo->mtxMax.y;
-						bLand = true;
-						pMove->y = 0.0f;
-
-						if (pColl != NULL)
-						{
-							*pColl = true;
-						}
-					}
-				}
-
-				break;
-			}
-			
+		default:
+			break;
 		}
 	}
 
 	return bLand;
 }
 
-//================================================================================================================
-// --- モデルの取得 ---
-//================================================================================================================
+//==================================================================================
+// --- 配置したオブジェクトの取得 (先頭) ---
+//==================================================================================
 Object *GetObject(void)
 {
 	return &g_aObject[0];
 }
 
-//================================================================================================================
-// --- オブジェクト情報の取得 ---
-//================================================================================================================
-ObjectInfo* GetObjectInfo(_In_ int nType)
+//==================================================================================
+// --- 読み込んだモデルの取得 (範囲外・読み込めていない場合は NULL) ---
+//==================================================================================
+ObjectInfo *GetObjectInfo(_In_ int nType)
 {
 	if (nType < 0 || nType >= MAX_OBJECT)
 	{
-		//assert(0);
 		return NULL;
 	}
 
-	LPOBJECTINFO pInfo = &g_aObjectInfo[nType];
-	if (pInfo->bSafe == true)
-	{
-		return &g_aObjectInfo[nType];
-	}
-	else
+	if (g_aObjectInfo[nType].bSafe == false)
 	{
 		return NULL;
 	}
+
+	return &g_aObjectInfo[nType];
 }
 
+//==================================================================================
+// --- モデルの、指定した軸で最小・最大を取った頂点の取得 ---
+// nXYZ : 0 = X最小 / 1 = X最大 / 2 = Y最小 / 3 = Y最大 / 4 = Z最小 / 5 = Z最大
+//==================================================================================
 D3DXVECTOR3 GetObjectMVector(int nType, int nXYZ)
 {
-	if (nType == -1)
+	if (nType < 0 || nType >= MAX_OBJECT || nXYZ < 0 || nXYZ >= VTXIDX_MAX)
 	{
-		//assert(0);
-		return VECNULL;
-	}
-
-	if (nXYZ < 0 || nXYZ >= 6)
-	{
-		//assert(0);
 		return VECNULL;
 	}
 
 	return g_aPos[nType][nXYZ];
+}
+
+//==================================================================================
+//
+// ここから内部処理
+//
+//==================================================================================
+
+//==================================================================================
+// --- モデルのマテリアルに指定されたテクスチャの読み込み ---
+//==================================================================================
+static void LoadObjectTexture(LPOBJECTINFO pInfo, const char *pXFileName)
+{
+	LPDIRECT3DDEVICE9 pDevice = GetDevice();									// デバイス
+	D3DXMATERIAL *pMat = (D3DXMATERIAL*)pInfo->pBuffMat->GetBufferPointer();	// マテリアルデータ
+
+	for (int nCntMat = 0; nCntMat < (int)pInfo->dwNumMat; nCntMat++)
+	{
+		if (pMat[nCntMat].pTextureFilename == NULL)
+		{ // テクスチャ無し
+			continue;
+		}
+
+		if (CheckPath(pMat[nCntMat].pTextureFilename))
+		{ // 絶対パスになっている
+#ifdef _DEBUG
+			GenerateMessageBox(MB_ICONERROR, "Warnings!", "対象Xファイルパス : %s", pXFileName);
+#endif
+		}
+
+		if (FAILED(D3DXCreateTextureFromFile(pDevice, pMat[nCntMat].pTextureFilename, &pInfo->apTexture[nCntMat])))
+		{ // テクスチャ読み込み失敗
+#ifdef _DEBUG
+			GenerateMessageBox(MB_ICONERROR, "Error (4)", "Xファイルのテクスチャ読み込みに失敗しました。\n対象パス : %s", pMat[nCntMat].pTextureFilename);
+#endif
+		}
+	}
+}
+
+//==================================================================================
+// --- 全頂点を調べて、モデルの最小・最大座標を求める ---
+// ※ 値は RepairFloat で整数に丸める
+//==================================================================================
+static void CalcObjectSize(int nIdxInfo)
+{
+	LPOBJECTINFO pInfo = &g_aObjectInfo[nIdxInfo];							// 調べるモデル
+	D3DXVECTOR3 *pPosVtx = &g_aPos[nIdxInfo][0];							// 最小・最大を取った頂点の格納先
+	int nNumVtx = pInfo->pMesh->GetNumVertices();							// 頂点数
+	DWORD dwSizeFVF = D3DXGetFVFVertexSize(pInfo->pMesh->GetFVF());			// 頂点1つ分のサイズ
+	BYTE *pVtxBuff = NULL;													// 頂点バッファ
+
+	pInfo->pMesh->LockVertexBuffer(D3DLOCK_READONLY, (void**)&pVtxBuff);
+
+	for (int nCntVtx = 0; nCntVtx < nNumVtx; nCntVtx++, pVtxBuff += dwSizeFVF)
+	{
+		D3DXVECTOR3 vtx = *(D3DXVECTOR3*)pVtxBuff;		// 頂点座標 (頂点データの先頭)
+
+		/*** 最小値 ***/
+		if (pInfo->mtxMin.x > vtx.x) { pInfo->mtxMin.x = vtx.x; RepairFloat(&pInfo->mtxMin.x); pPosVtx[VTXIDX_MIN_X] = vtx; }
+		if (pInfo->mtxMin.y > vtx.y) { pInfo->mtxMin.y = vtx.y; RepairFloat(&pInfo->mtxMin.y); pPosVtx[VTXIDX_MIN_Y] = vtx; }
+		if (pInfo->mtxMin.z > vtx.z) { pInfo->mtxMin.z = vtx.z; RepairFloat(&pInfo->mtxMin.z); pPosVtx[VTXIDX_MIN_Z] = vtx; }
+
+		/*** 最大値 ***/
+		if (pInfo->mtxMax.x < vtx.x) { pInfo->mtxMax.x = vtx.x; RepairFloat(&pInfo->mtxMax.x); pPosVtx[VTXIDX_MAX_X] = vtx; }
+		if (pInfo->mtxMax.y < vtx.y) { pInfo->mtxMax.y = vtx.y; RepairFloat(&pInfo->mtxMax.y); pPosVtx[VTXIDX_MAX_Y] = vtx; }
+		if (pInfo->mtxMax.z < vtx.z) { pInfo->mtxMax.z = vtx.z; RepairFloat(&pInfo->mtxMax.z); pPosVtx[VTXIDX_MAX_Z] = vtx; }
+	}
+
+	pInfo->pMesh->UnlockVertexBuffer();
+}
+
+//==================================================================================
+// --- 回転を考慮しない箱との当たり判定 ---
+// 箱の中に入ったら、前フレームにいた側の面まで押し戻す
+// 戻り値 : 上に乗ったか
+//==================================================================================
+static bool CollisionObjectRect(const Object *pObject, D3DXVECTOR3 *pPos, D3DXVECTOR3 *pPosOld, D3DXVECTOR3 *pMove, bool *pColl)
+{
+	const ObjectInfo *pInfo = &g_aObjectInfo[pObject->nType];		// オブジェクトのモデル
+	D3DXVECTOR3 posMin = pObject->pos + pInfo->mtxMin;				// 箱の最小座標
+	D3DXVECTOR3 posMax = pObject->pos + pInfo->mtxMax;				// 箱の最大座標
+	bool bLand = false;												// 上に乗ったか
+
+	if (pPos->x < posMin.x || pPos->x > posMax.x
+		|| pPos->y > posMax.y || pPos->y < posMin.y
+		|| pPos->z < posMin.z || pPos->z > posMax.z)
+	{ // 箱の外
+		return false;
+	}
+
+	/*** X : 前フレームにいた側へ押し戻す ***/
+	if (pPosOld->x <= posMin.x)			pPos->x = posMin.x;
+	else if (pPosOld->x >= posMax.x)	pPos->x = posMax.x;
+
+	/*** Y : 上から入ったら上に乗せる ***/
+	if (pPosOld->y < posMin.y)
+	{
+		pPos->y = posMin.y;
+	}
+	else if (pPosOld->y >= posMax.y)
+	{
+		pPos->y = posMax.y;
+		pMove->y = 0.0f;
+		bLand = true;
+	}
+
+	/*** Z ***/
+	if (pPosOld->z <= posMin.z)
+	{
+		pPos->z = posMin.z;
+		g_nCountCollision++;
+	}
+	else if (pPosOld->z >= posMax.z)
+	{
+		pPos->z = posMax.z;
+		g_nCountCollision++;
+	}
+
+	if (pColl != NULL)
+	{
+		*pColl = true;
+	}
+
+	return bLand;
+}
+
+//==================================================================================
+// --- Y軸回転を考慮した箱との当たり判定 (4辺それぞれと外積で判定) ---
+// 辺を外から内へまたいだら辺の上に押し戻し、4辺全ての内側にいれば上に乗せる
+// 戻り値 : 上に乗ったか
+//==================================================================================
+static bool CollisionObjectCross(const Object *pObject, D3DXVECTOR3 *pPos, D3DXVECTOR3 *pPosOld, D3DXVECTOR3 *pMove, float fHeight, bool *pColl)
+{
+	const ObjectInfo *pInfo = &g_aObjectInfo[pObject->nType];		// オブジェクトのモデル
+
+	if (pPos->y + fHeight < pObject->pos.y + pInfo->mtxMin.y
+		|| pPos->y > pObject->pos.y + pInfo->mtxMax.y)
+	{ // 高さが重なっていない
+		return false;
+	}
+
+	/*** 回転させた箱の4隅 (左手前 → 右手前 → 右奥 → 左奥) ***/
+	D3DXVECTOR3 aPosCorner[4] =
+	{
+		GetRotatedCorner(pObject, pInfo->mtxMin.x, pInfo->mtxMin.z),
+		GetRotatedCorner(pObject, pInfo->mtxMax.x, pInfo->mtxMin.z),
+		GetRotatedCorner(pObject, pInfo->mtxMax.x, pInfo->mtxMax.z),
+		GetRotatedCorner(pObject, pInfo->mtxMin.x, pInfo->mtxMax.z),
+	};
+
+	D3DXVECTOR3 vecMove = *pPos - *pPosOld;		// 移動ベクトル
+	bool abInside[4] = {};						// 各辺の内側にいるか
+
+	for (int nCntLine = 0; nCntLine < 4; nCntLine++)
+	{
+		const D3DXVECTOR3 *pStart = &aPosCorner[nCntLine];					// 辺の始点
+		D3DXVECTOR3 vecLine = aPosCorner[(nCntLine + 1) % 4] - *pStart;		// 辺のベクトル
+
+		RepairFloat(&vecLine.x);
+		RepairFloat(&vecLine.z);
+
+		/*** 現在・前フレームの位置が辺のどちら側か (外積 : 負なら内側) ***/
+		D3DXVECTOR3 vecToPos = *pPos - *pStart;				// 始点 → 現在位置
+		D3DXVECTOR3 vecToPosOld = *pPosOld - *pStart;		// 始点 → 前フレームの位置
+
+		float fCross = (vecLine.z * vecToPos.x) - (vecLine.x * vecToPos.z);				// 現在位置との外積
+		float fCrossOld = (vecLine.z * vecToPosOld.x) - (vecLine.x * vecToPosOld.z);	// 前フレームの位置との外積
+		RepairFloat(&fCross);
+		RepairFloat(&fCrossOld);
+
+		/*** 移動ベクトルと辺の交点の位置 (辺の始点からの割合) ***/
+		float fCrossPosMove = (vecToPos.z * vecMove.x) - (vecToPos.x * vecMove.z);		// 始点→現在位置 と 移動ベクトルの外積
+		float fCrossLineMove = (vecLine.z * vecMove.x) - (vecLine.x * vecMove.z);		// 辺 と 移動ベクトルの外積
+		float fRate = fCrossPosMove / fCrossLineMove;									// 交点の割合
+
+		/*** 押し戻し後に辺に沿って滑らせる量 ***/
+		D3DXVECTOR3 vecNor = D3DXVECTOR3(vecLine.z, 0.0f, -vecLine.x);		// 辺の法線
+		D3DXVec3Normalize(&vecNor, &vecNor);
+
+		float fCrossNorMove = (vecNor.z * vecMove.x) - (vecNor.x * vecMove.z);		// 法線と移動ベクトルの外積
+		D3DXVECTOR3 vecLineDir;														// 辺の向き(単位ベクトル)
+		D3DXVec3Normalize(&vecLineDir, &vecLine);
+
+		D3DXVECTOR3 vecSlide = (fCrossNorMove > 0)
+			? -vecLineDir * fabsf(fCrossNorMove)
+			: vecLineDir * fabsf(fCrossNorMove);									// 滑らせる量
+
+		if (fCross <= 0 && fCrossOld >= 0 && fRate >= 0.0f && fRate <= 1.0f)
+		{ // 外から内へ辺をまたいだ → 交点まで押し戻して滑らせる
+			pPos->x = pStart->x + (vecLine.x * fRate) + vecSlide.x;
+			pPos->z = pStart->z + (vecLine.z * fRate) + vecSlide.z;
+		}
+
+		if (fCross < 0 && fCrossOld < 0)
+		{ // ずっと内側にいる
+			abInside[nCntLine] = true;
+		}
+	}
+
+	if (abInside[0] && abInside[1] && abInside[2] && abInside[3])
+	{ // 4辺全ての内側 → 上に乗せる
+		pPos->y = pObject->pos.y + pInfo->mtxMax.y;
+		pMove->y = 0.0f;
+
+		if (pColl != NULL)
+		{
+			*pColl = true;
+		}
+
+		return true;
+	}
+
+	return false;
+}
+
+//==================================================================================
+// --- オブジェクトのローカル座標(XZ)の隅を、オブジェクトの向きで回転させたワールド座標 ---
+//==================================================================================
+static D3DXVECTOR3 GetRotatedCorner(const Object *pObject, float fOffsetX, float fOffsetZ)
+{
+	D3DXVECTOR3 posCorner = D3DXVECTOR3(pObject->pos.x + fOffsetX, pObject->pos.y, pObject->pos.z + fOffsetZ);	// 回転前の隅
+	D3DXVECTOR3 vecToCorner = posCorner - pObject->pos;																// 中心 → 隅
+	float fLength = D3DXVec3Length(&vecToCorner);																	// 中心からの距離
+	float fAngle = GetPosToPos(posCorner, pObject->pos);															// 中心から見た隅の方向
+
+	return D3DXVECTOR3(pObject->pos.x + (sinf(fAngle + pObject->rot.y) * fLength),
+		pObject->pos.y,
+		pObject->pos.z + (cosf(fAngle + pObject->rot.y) * fLength));
 }

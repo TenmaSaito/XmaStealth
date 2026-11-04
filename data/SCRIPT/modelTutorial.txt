@@ -9,22 +9,26 @@ SCRIPT		# 消すな
 #=================================================
 # 読み込むテクスチャファイル数
 #=================================================
-NUM_TEXTURE = 6
+NUM_TEXTURE = 10
 
 #=================================================
 # テクスチャパス
 #=================================================
-TEXTURE_FILENAME = data/TEXTURE/field000.jpg		# [0]地面テクスチャ
-TEXTURE_FILENAME = data/TEXTURE/sky000.jpg			# [1]ソラ
-TEXTURE_FILENAME = data/TEXTURE/shadow000.jpg		# [2]エフェクト兼影テクスチャ
-TEXTURE_FILENAME = data/TEXTURE/Arrow.png			# [3]矢印
-TEXTURE_FILENAME = data/TEXTURE/Tutorial.png		# [4]チュートリアル
-TEXTURE_FILENAME = data/TEXTURE/gradation000.jpg	# [5]グラデーション
+TEXTURE_FILENAME = data/TEXTURE/field000.jpg			# [0]地面テクスチャ
+TEXTURE_FILENAME = data/TEXTURE/sky000.jpg				# [1]ソラ
+TEXTURE_FILENAME = data/TEXTURE/shadow000.jpg			# [2]エフェクト兼影テクスチャ
+TEXTURE_FILENAME = data/TEXTURE/Arrow.png				# [3]矢印
+TEXTURE_FILENAME = data/TEXTURE/Tutorial.png			# [4]チュートリアル
+TEXTURE_FILENAME = data/TEXTURE/gradation100.jpg		# [5]グラデーション
+TEXTURE_FILENAME = data/TEXTURE/UI/Skip.png				# [6]スキップ表示
+TEXTURE_FILENAME = data/TEXTURE/UI/bear_State.png		# [7]クマの状態
+TEXTURE_FILENAME = data/TEXTURE/UI/bear_StateInfo.png	# [8]クマの状態説明
+TEXTURE_FILENAME = data/TEXTURE/UI/Tutorial_UI.png		# [9]チュートリアル！
 
 #=================================================
 # 読み込むモデル数
 #================================================
-NUM_MODEL = 17
+NUM_MODEL = 21
 
 #=================================================
 # Xファイルのパス
@@ -46,6 +50,10 @@ MODEL_FILENAME = data/MODEL/Object/Ornaments/trash_cokecola.x	# [13] ゴミその二
 MODEL_FILENAME = data/MODEL/Object/Ornaments/trash_potato.x		# [14] ゴミその三
 MODEL_FILENAME = data/MODEL/Object/Ornaments/present_box.x		# [15] プレゼントボックス
 MODEL_FILENAME = data/MODEL/Object/Ornaments/ornament_box.x		# [16] 仮配置用オーナメント
+MODEL_FILENAME = data/MODEL/Object/TUTORIAL/tutorial_01.x		# [17] チュートリアル用配置看板1
+MODEL_FILENAME = data/MODEL/Object/TUTORIAL/tutorial_02.x		# [18] チュートリアル用配置看板2
+MODEL_FILENAME = data/MODEL/Object/TUTORIAL/tutorial_03.x		# [19] チュートリアル用配置看板3
+MODEL_FILENAME = data/MODEL/Object/TUTORIAL/tutorial_00.x		# [20] チュートリアル用配置看板0
 
 #=================================================
 # カメラ設定
@@ -84,14 +92,14 @@ ORNAMENTSET
 
 	ORNAMENT
 		ISSTAR = 1		# スターか (0 = FALSE / 1 = TRUE / 2 = TRASH)
-		TYPE = 1		# モデル番号
-		RADIUS = 5.0	# 当たり判定の半径
+		TYPE = 2		# モデル番号
+		RADIUS = 10.0	# 当たり判定の半径
 		WEIGHT = 50.0	# オーナメントの重量
 	END_ORNAMENT
 
 	ORNAMENT
 		ISSTAR = 0		# スターか (0 = FALSE / 1 = TRUE / 2 = TRASH)
-		TYPE = 2		# モデル番号
+		TYPE = 1		# モデル番号
 		RADIUS = 5.0	# 当たり判定の半径
 		WEIGHT = 10.0	# オーナメントの重量
 	END_ORNAMENT
@@ -160,7 +168,7 @@ ORNAMENTSET
 	END_ORNAMENT
 
 	ORNAMENT
-		ISSTAR = 0		# スターか (0 = FALSE / 1 = TRUE / 2 = TRASH)
+		ISSTAR = 2		# スターか (0 = FALSE / 1 = TRUE / 2 = TRASH)
 		TYPE = 12		# モデル番号
 		RADIUS = 5.0	# 当たり判定の半径
 		WEIGHT = 6.0	# オーナメントの重量
@@ -181,7 +189,7 @@ ORNAMENTSET
 	END_ORNAMENT
 
 	ORNAMENT
-		ISSTAR = 2		# スターか (0 = FALSE / 1 = TRUE / 2 = TRASH)
+		ISSTAR = 0		# スターか (0 = FALSE / 1 = TRUE / 2 = TRASH)
 		TYPE = 15		# モデル番号
 		RADIUS = 5.0	# 当たり判定の半径
 		WEIGHT = 6.0	# オーナメントの重量
@@ -203,6 +211,38 @@ END_FIELDSET
 #=================================================
 # モデル設置
 #=================================================
+
+# 看板00 ----
+MODELSET
+	TYPE = 20
+	INDEX = 1
+	POS = -200 0 0
+	ROT = 0 0 0
+END_MODELSET
+
+# 看板01 ----
+MODELSET
+	TYPE = 17
+	INDEX = 1
+	POS = -100 0 0
+	ROT = 0 0 0
+END_MODELSET
+
+# 看板02 ----
+MODELSET
+	TYPE = 18
+	INDEX = 1
+	POS = 100 0 0
+	ROT = 0 0 0
+END_MODELSET
+
+# 看板03 ----
+MODELSET
+	TYPE = 19
+	INDEX = 1
+	POS = 200 0 0
+	ROT = 0 0 0
+END_MODELSET
 
 # クリスマスツリー ----
 XMASTREESET

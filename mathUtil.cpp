@@ -1,33 +1,33 @@
-//================================================================================================================
+//==================================================================================
 //
-// DirectXの計算関連cppファイル [mathUtil.cpp]
-// Author : TENMA
+// 計算関連cppファイル [mathUtil.cpp]
+// Author : TENMA SAITO
 //
-//================================================================================================================
+//==================================================================================
 //**********************************************************************************
-//*** インクルードファイル ***
+// *** インクルードファイル ***
 //**********************************************************************************
 #include "mathUtil.h"
 #include "debugproc.h"
 #include "effect.h"
 
 //**********************************************************************************
-//*** レンダリング状態情報構造体 ***
+// *** レンダリング状態情報構造体 ***
 //**********************************************************************************
 typedef struct
 {
 	D3DRENDERSTATETYPE type;		// レンダリング種類
-	DWORD value;					// 値
+	DWORD dwValue;					// 値
 } RenderStateInfo;
 
 //**********************************************************************************
-//*** グローバル変数 ***
+// *** グローバル変数 ***
 //**********************************************************************************
-RenderStateInfo g_aRStateInfo[300] = {};		// 情報
+static RenderStateInfo g_aRStateInfo[300] = {};		// 情報
 
-//================================================
+//==================================================================================
 // --- 対象の位置の範囲確認処理 ---
-//================================================
+//==================================================================================
 bool CollisionBox(RECT rect, D3DXVECTOR3 pos)
 {
 	/*** 対象の位置が指定された四角形の範囲内か確認 ***/
@@ -42,9 +42,9 @@ bool CollisionBox(RECT rect, D3DXVECTOR3 pos)
 	return false;
 }
 
-//================================================
+//==================================================================================
 // --- 対象の位置の範囲確認処理(XZ平面) ---
-//================================================
+//==================================================================================
 bool CollisionBoxZ(D3DXVECTOR4 rect, D3DXVECTOR3 pos)
 {
 	/*** 対象の位置が指定された四角形の範囲内か確認 ***/
@@ -59,12 +59,12 @@ bool CollisionBoxZ(D3DXVECTOR4 rect, D3DXVECTOR3 pos)
 	return false;
 }
 
-//================================================
+//==================================================================================
 // --- 列挙型の範囲確認処理 ---
-//================================================
-HRESULT CheckIndex(int TargetIndexMax, int Index, int TargetIndexMin)
+//==================================================================================
+HRESULT CheckIndex(int nIndexMax, int nIndex, int nIndexMin)
 {
-	if (Index < TargetIndexMin || Index >= TargetIndexMax)
+	if (nIndex < nIndexMin || nIndex >= nIndexMax)
 	{
 		return E_FAIL;
 	}
@@ -72,9 +72,9 @@ HRESULT CheckIndex(int TargetIndexMax, int Index, int TargetIndexMin)
 	return S_OK;
 }
 
-//================================================
+//==================================================================================
 // --- 四点指定処理 ---
-//================================================
+//==================================================================================
 POINT_RECT SetPointRect(D3DXVECTOR3 p1, D3DXVECTOR3 p2, D3DXVECTOR3 p3, D3DXVECTOR3 p4)
 {
 	POINT_RECT pointrect = {};
@@ -87,9 +87,9 @@ POINT_RECT SetPointRect(D3DXVECTOR3 p1, D3DXVECTOR3 p2, D3DXVECTOR3 p3, D3DXVECT
 	return pointrect;
 }
 
-//================================================
+//==================================================================================
 // --- RECTからPointRectへの変換処理 ---
-//================================================
+//==================================================================================
 POINT_RECT SetRectToPointRect(RECT rect)
 {
 	POINT_RECT prRect = {};
@@ -102,22 +102,22 @@ POINT_RECT SetRectToPointRect(RECT rect)
 	return prRect;
 }
 
-//==================================================================
+//==================================================================================
 // --- 対象から対象へホーミングする処理 ---
-//==================================================================
+//==================================================================================
 void HomingPosToPos(D3DXVECTOR3 posTarget, D3DXVECTOR3 *posMover, float fSpeed)
 {
 	float fAngle = 0.0f;
-	
+
 	fAngle = atan2f(posTarget.x - posMover->x, posTarget.z - posMover->z);
 
 	posMover->x += sinf(fAngle) * fSpeed;
 	posMover->z += cosf(fAngle) * fSpeed;
 }
 
-//==================================================================
+//==================================================================================
 // --- 対象から対象への角度を求める処理 ---
-//==================================================================
+//==================================================================================
 float GetPosToPos(D3DXVECTOR3 posTarget, D3DXVECTOR3 posMover)
 {
 	float fAngle = 0.0f;
@@ -137,151 +137,73 @@ float GetPosToPos(D3DXVECTOR3 posTarget, D3DXVECTOR3 posMover)
 	return fAngle;
 }
 
-//==================================================================
-// --- 角度を修正する処理 ---
-//==================================================================
+//==================================================================================
+// --- 角度を -π～π (-π は含まない) に収める処理 ---
+// ※ 1周分(2π)だけずらすので、2周以上ずれた角度は収まりきらない
+//==================================================================================
 float RepairRot(float fRot)
 {
-	if (fRot <= -D3DX_PI || fRot > D3DX_PI)
+	if (fRot > D3DX_PI)
 	{
-		if (fRot > D3DX_PI)
-		{
-			fRot -= D3DX_PI * 2.0f;
-		}
-		else if (fRot <= -D3DX_PI)
-		{
-			fRot += D3DX_PI * 2.0f;
-		}
+		fRot -= D3DX_PI * 2.0f;
+	}
+	else if (fRot <= -D3DX_PI)
+	{
+		fRot += D3DX_PI * 2.0f;
+	}
 
-		return fRot;
-	}
-	else
-	{
-		return fRot;
-	}
+	return fRot;
 }
 
-//==================================================================
-// --- 角度を修正する処理(ポインタ処理) ---
-//==================================================================
-void RepairRot(float *pOut, const float *fAngle)
+//==================================================================================
+// --- 角度を -π～π に収める処理 (ポインタ版) ---
+//==================================================================================
+void RepairRot(float *pOut, const float *pIn)
 {
-	float fOut = *fAngle;
-
-	if (fOut > D3DX_PI)
-	{
-		fOut -= D3DX_PI * 2.0f;
-	}
-	else if (fOut <= -D3DX_PI)
-	{
-		fOut += D3DX_PI * 2.0f;
-	}
-
-	*pOut = fOut;
+	*pOut = RepairRot(*pIn);
 }
 
-//==================================================================
-// --- 角度を修正する処理(ポインタ処理) ---
-//==================================================================
-void RepairRot(D3DXVECTOR3* pOut, const D3DXVECTOR3* pIn)
+//==================================================================================
+// --- 角度(XYZ)を -π～π に収める処理 (ポインタ版) ---
+//==================================================================================
+void RepairRot(D3DXVECTOR3 *pOut, const D3DXVECTOR3 *pIn)
 {
-	D3DXVECTOR3 out = *pIn;
+	D3DXVECTOR3 rotOut = D3DXVECTOR3(RepairRot(pIn->x), RepairRot(pIn->y), RepairRot(pIn->z));		// 修正後の角度
 
-	if (out.x > D3DX_PI)
-	{
-		out.x -= D3DX_PI * 2.0f;
-	}
-	else if (out.x <= -D3DX_PI)
-	{
-		out.x += D3DX_PI * 2.0f;
-	}
-
-	if (out.y > D3DX_PI)
-	{
-		out.y -= D3DX_PI * 2.0f;
-	}
-	else if (out.y <= -D3DX_PI)
-	{
-		out.y += D3DX_PI * 2.0f;
-	}
-
-	if (out.z > D3DX_PI)
-	{
-		out.z -= D3DX_PI * 2.0f;
-	}
-	else if (out.z <= -D3DX_PI)
-	{
-		out.z += D3DX_PI * 2.0f;
-	}
-
-	*pOut = out;
+	*pOut = rotOut;
 }
 
-//==================================================================
-// --- 角度を反転する処理 ---
-//==================================================================
+//==================================================================================
+// --- 角度を反転(+π)する処理 ---
+//==================================================================================
 float InverseRot(float fRot)
 {
-	float fRotInverse = fRot;
-
-	fRotInverse += D3DX_PI;
-	if (fRotInverse > D3DX_PI)
-	{
-		fRotInverse -= D3DX_PI * 2.0f;
-	}
-	else if (fRotInverse <= -D3DX_PI)
-	{
-		fRotInverse += D3DX_PI * 2.0f;
-	}
-
-	return fRotInverse;
+	return RepairRot(fRot + D3DX_PI);
 }
 
-D3DXVECTOR3 InverseRot(D3DXVECTOR3 fRot)
+//==================================================================================
+// --- 角度(XYZ)を反転する処理 ※ 未実装 (常に0を返す) ---
+//==================================================================================
+D3DXVECTOR3 InverseRot(D3DXVECTOR3 rot)
 {
 	return VECNULL;
 }
 
-//==================================================================
-// --- 角度を修正する処理 ---
-//==================================================================
-D3DXVECTOR3 RepairedRot(const D3DXVECTOR3 pIn)
+//==================================================================================
+// --- 角度(XYZ)を -π～π に収めた値を返す処理 ---
+//==================================================================================
+D3DXVECTOR3 RepairedRot(const D3DXVECTOR3 rotIn)
 {
-	D3DXVECTOR3 out = pIn;
+	D3DXVECTOR3 rotOut;		// 修正後の角度
 
-	if (out.x > D3DX_PI)
-	{
-		out.x -= D3DX_PI * 2.0f;
-	}
-	else if (out.x <= -D3DX_PI)
-	{
-		out.x += D3DX_PI * 2.0f;
-	}
+	RepairRot(&rotOut, &rotIn);
 
-	if (out.y > D3DX_PI)
-	{
-		out.y -= D3DX_PI * 2.0f;
-	}
-	else if (out.y <= -D3DX_PI)
-	{
-		out.y += D3DX_PI * 2.0f;
-	}
-
-	if (out.z > D3DX_PI)
-	{
-		out.z -= D3DX_PI * 2.0f;
-	}
-	else if (out.z <= -D3DX_PI)
-	{
-		out.z += D3DX_PI * 2.0f;
-	}
-
-	return out;
+	return rotOut;
 }
 
-//==================================================================
+//==================================================================================
 // --- 位置と位置の間の座標を求める処理 ---
-//==================================================================
+//==================================================================================
 D3DXVECTOR3 GetPosBetweenPos(D3DXVECTOR3 pos1, D3DXVECTOR3 pos2)
 {
 	D3DXVECTOR3 posResult = D3DXVECTOR3_NULL;
@@ -320,9 +242,9 @@ D3DXVECTOR3 GetPosBetweenPos(D3DXVECTOR3 pos1, D3DXVECTOR3 pos2)
 	return posResult;
 }
 
-//==================================================================
+//==================================================================================
 // --- ランダムな色を求める処理 ---
-//==================================================================
+//==================================================================================
 D3DXCOLOR GetRandomColor(bool bUseAlphaRand)
 {
 	D3DXCOLOR col;
@@ -343,9 +265,9 @@ D3DXCOLOR GetRandomColor(bool bUseAlphaRand)
 	return col;
 }
 
-//==================================================================
+//==================================================================================
 // --- 2点間の距離を求める処理 ---
-//==================================================================
+//==================================================================================
 float GetPTPLength(D3DXVECTOR3 pos1, D3DXVECTOR3 pos2)
 {
 	float fLength = 0.0f;
@@ -373,9 +295,9 @@ float GetPTPLength(D3DXVECTOR3 pos1, D3DXVECTOR3 pos2)
 	return fLength;
 }
 
-//==================================================================
+//==================================================================================
 // --- ポリゴンを回転させる処理 ---
-//==================================================================
+//==================================================================================
 void RollPolygon(VERTEX_2D* pVtx, D3DXVECTOR3 pos, float fWidth, float fHeight, float fRot, int nSpeed)
 {
 	float fLength = sqrtf(powf(fWidth, 2.0f) + powf(fHeight, 2.0f));
@@ -404,9 +326,9 @@ void RollPolygon(VERTEX_2D* pVtx, D3DXVECTOR3 pos, float fWidth, float fHeight, 
 	pVtx[3].pos.z = 0.0f;
 }
 
-//==================================================================
+//==================================================================================
 // --- ポリゴンを画面全体に描画する処理 ---
-//==================================================================
+//==================================================================================
 void SetFullScreenPolygon(VERTEX_2D* pVtx)
 {
 	/*** 頂点バッファのポインタがNULLの場合、処理を行わずにスキップ ***/
@@ -432,13 +354,55 @@ void SetFullScreenPolygon(VERTEX_2D* pVtx)
 	pVtx[3].pos.z = 0.0f;
 }
 
-//==================================================================
+//==================================================================================
+// --- 中心座標とサイズから2Dポリゴン(4頂点)の頂点座標を設定する処理 ---
+//==================================================================================
+void SetCenterPolygon2D(VERTEX_2D *pVtx, D3DXVECTOR3 pos, float fWidth, float fHeight)
+{
+	if (pVtx == NULL)
+	{ // 頂点バッファのポインタがNULLの場合、処理を行わずにスキップ
+		return;
+	}
+
+	float fHalfWidth = fWidth * 0.5f;		// 横幅の半分
+	float fHalfHeight = fHeight * 0.5f;		// 高さの半分
+
+	pVtx[0].pos = D3DXVECTOR3(pos.x - fHalfWidth, pos.y - fHalfHeight, 0.0f);	// 左上
+	pVtx[1].pos = D3DXVECTOR3(pos.x + fHalfWidth, pos.y - fHalfHeight, 0.0f);	// 右上
+	pVtx[2].pos = D3DXVECTOR3(pos.x - fHalfWidth, pos.y + fHalfHeight, 0.0f);	// 左下
+	pVtx[3].pos = D3DXVECTOR3(pos.x + fHalfWidth, pos.y + fHalfHeight, 0.0f);	// 右下
+}
+
+//==================================================================================
+// --- 2Dポリゴン(4頂点)の rhw・頂点カラー・テクスチャ座標を標準値で設定する処理 ---
+//==================================================================================
+void SetDefaultPolygon2D(VERTEX_2D *pVtx, D3DXCOLOR col)
+{
+	if (pVtx == NULL)
+	{ // 頂点バッファのポインタがNULLの場合、処理を行わずにスキップ
+		return;
+	}
+
+	for (int nCntVtx = 0; nCntVtx < 4; nCntVtx++)
+	{
+		pVtx[nCntVtx].rhw = 1.0f;		// 座標変換用係数
+		pVtx[nCntVtx].col = col;		// 頂点カラー
+	}
+
+	/*** テクスチャ全体を貼る ***/
+	pVtx[0].tex = D3DXVECTOR2(0.0f, 0.0f);
+	pVtx[1].tex = D3DXVECTOR2(1.0f, 0.0f);
+	pVtx[2].tex = D3DXVECTOR2(0.0f, 1.0f);
+	pVtx[3].tex = D3DXVECTOR2(1.0f, 1.0f);
+}
+
+//==================================================================================
 // --- 360°をD3DXVECTOR3のRadianに変換する処理 ---
-//==================================================================
+//==================================================================================
 D3DXVECTOR3 DegreeToRadian(D3DXVECTOR3 degree)
 {
 	D3DXVECTOR3 radian;
-	
+
 	radian.x = D3DXToRadian(degree.x);
 	/** 角度の修正! **/
 	if (radian.x < -D3DX_PI)
@@ -475,9 +439,9 @@ D3DXVECTOR3 DegreeToRadian(D3DXVECTOR3 degree)
 	return radian;
 }
 
-//==================================================================
+//==================================================================================
 // --- RadianをD3DXVECTOR3のDegreeに変換する処理 ---
-//==================================================================
+//==================================================================================
 D3DXVECTOR3 RadianToDegree(D3DXVECTOR3 radian)
 {
 	D3DXVECTOR3 degree;
@@ -489,9 +453,9 @@ D3DXVECTOR3 RadianToDegree(D3DXVECTOR3 radian)
 	return degree;
 }
 
-//==================================================================
+//==================================================================================
 // --- INT_VECTOR3をD3DXVECTOR3に変換する処理 ---
-//==================================================================
+//==================================================================================
 D3DXVECTOR3 INTToFloat(INT_VECTOR3 nVector3)
 {
 	D3DXVECTOR3 rot = D3DXVECTOR3_NULL;
@@ -503,9 +467,9 @@ D3DXVECTOR3 INTToFloat(INT_VECTOR3 nVector3)
 	return rot;
 }
 
-//==================================================================
+//==================================================================================
 // --- INT_VECTOR2をD3DXVECTOR2に変換する処理 ---
-//==================================================================
+//==================================================================================
 D3DXVECTOR2 INTToFloat(INT_VECTOR2 nVector2)
 {
 	D3DXVECTOR2 tex = D3DXVECTOR2(0.0f, 0.0f);
@@ -516,9 +480,9 @@ D3DXVECTOR2 INTToFloat(INT_VECTOR2 nVector2)
 	return tex;
 }
 
-//==================================================================
+//==================================================================================
 // --- テクスチャ設定処理 ---
-//==================================================================
+//==================================================================================
 void SetVtxTexture(VERTEX_2D* pVtx, float x, float y)
 {
 	if (pVtx == NULL)
@@ -539,9 +503,9 @@ void SetVtxTexture(VERTEX_2D* pVtx, float x, float y)
 	pVtx[3].tex.y = 1.0f * y;
 }
 
-//==================================================================
+//==================================================================================
 // --- テクスチャ設定処理 ---
-//==================================================================
+//==================================================================================
 void SetVtxTexture(VERTEX_3D* pVtx, float x, float y)
 {
 	if (pVtx == NULL)
@@ -562,28 +526,28 @@ void SetVtxTexture(VERTEX_3D* pVtx, float x, float y)
 	pVtx[3].tex.y = 1.0f * y;
 }
 
-//==================================================================
+//==================================================================================
 // --- 位置ランダム設定処理 ---
-//==================================================================
-D3DXVECTOR3 GetRandomVector3(int mx, int my, int mz)
+//==================================================================================
+D3DXVECTOR3 GetRandomVector3(int nRangeX, int nRangeY, int nRangeZ)
 {
 	int x, y, z = {};
-	D3DXVECTOR3 Vector3 = {};
+	D3DXVECTOR3 vecRandom = {};
 
-	x = rand() % mx - (mx / 2);
-	y = rand() % my - (my / 2);
-	z = rand() % mz - (mz / 2);
+	x = rand() % nRangeX - (nRangeX / 2);
+	y = rand() % nRangeY - (nRangeY / 2);
+	z = rand() % nRangeZ - (nRangeZ / 2);
 
-	Vector3.x = (FLOAT)x;
-	Vector3.y = (FLOAT)y;
-	Vector3.z = (FLOAT)z;
+	vecRandom.x = (FLOAT)x;
+	vecRandom.y = (FLOAT)y;
+	vecRandom.z = (FLOAT)z;
 
-	return Vector3;
+	return vecRandom;
 }
 
-//==================================================================
+//==================================================================================
 // --- インデックスを利用したメッシュ頂点座標設定処理 ---
-//==================================================================
+//==================================================================================
 void SetIndexedVertex(VERTEX_3D* pVtx, D3DXVECTOR3 pos, int nXBlock, int nZBlock, float fWidth, float fDepth)
 {
 	float fOnceWidth = fWidth / (nXBlock + 1);
@@ -611,9 +575,9 @@ void SetIndexedVertex(VERTEX_3D* pVtx, D3DXVECTOR3 pos, int nXBlock, int nZBlock
 	}
 }
 
-//==================================================================
+//==================================================================================
 // --- インデックスの頂点番号設定処理 ---
-//==================================================================
+//==================================================================================
 int SetIndex(_Inout_ WORD *pIdx, _In_ int nXBlock, _In_ int nZBlock, _In_ int nOffSet, _Inout_opt_ WORD *pIdxSub)
 {
 	int nMaxIndex = (((nXBlock + 1) * 2) * nZBlock) + (2 * (nZBlock - 1));
@@ -671,7 +635,7 @@ int SetIndex(_Inout_ WORD *pIdx, _In_ int nXBlock, _In_ int nZBlock, _In_ int nO
 				nCount++;
 			}
 			else if (nCntIndex % 2 == 0)
-			{ // 偶数の場合	
+			{ // 偶数の場合
 				pIdx[nCntIndex] = nCount + ((nXBlock + 1) * (nLine + 1));
 
 				if (pIdxSub != NULL)
@@ -702,20 +666,20 @@ int SetIndex(_Inout_ WORD *pIdx, _In_ int nXBlock, _In_ int nZBlock, _In_ int nO
 	return nCntIndex;
 }
 
-//==================================================================
+//==================================================================================
 // --- float型の値の正規処理 ---
-//==================================================================
-void RepairFloat(float *fRepairTarget, int nCnt)
+//==================================================================================
+void RepairFloat(float *pTarget, int nCnt)
 {
-	int nRepairedFloat;
-	nRepairedFloat = *fRepairTarget * 10 * nCnt;
-	nRepairedFloat /= 10 * nCnt;
-	*fRepairTarget = nRepairedFloat;
+	int nTruncated;
+	nTruncated = *pTarget * 10 * nCnt;
+	nTruncated /= 10 * nCnt;
+	*pTarget = nTruncated;
 }
 
-//==================================================================
+//==================================================================================
 // --- Zテスト無効化設定処理 ---
-//==================================================================
+//==================================================================================
 void UnableZFunction(void)
 {
 	LPDIRECT3DDEVICE9 pDevice = GetDevice();
@@ -724,18 +688,18 @@ void UnableZFunction(void)
 	pDevice->SetRenderState(D3DRS_ZWRITEENABLE, FALSE);
 
 	g_aRStateInfo[D3DRS_ZWRITEENABLE].type = D3DRS_ZWRITEENABLE;
-	g_aRStateInfo[D3DRS_ZWRITEENABLE].value = FALSE;
+	g_aRStateInfo[D3DRS_ZWRITEENABLE].dwValue = FALSE;
 
 	pDevice->SetRenderState(D3DRS_ZFUNC, D3DCMP_ALWAYS);
 
 	g_aRStateInfo[D3DRS_ZFUNC].type = D3DRS_ZFUNC;
-	g_aRStateInfo[D3DRS_ZFUNC].value = D3DCMP_ALWAYS;
+	g_aRStateInfo[D3DRS_ZFUNC].dwValue = D3DCMP_ALWAYS;
 }
 
-//==================================================================
+//==================================================================================
 // --- Alphaテスト有効化設定処理 ---
-//==================================================================
-void AbleAlphaFunction(D3DCMPFUNC funcType, DWORD value)
+//==================================================================================
+void AbleAlphaFunction(D3DCMPFUNC alphaFunc, DWORD dwAlphaRef)
 {
 	LPDIRECT3DDEVICE9 pDevice = GetDevice();
 
@@ -743,65 +707,65 @@ void AbleAlphaFunction(D3DCMPFUNC funcType, DWORD value)
 	pDevice->SetRenderState(D3DRS_ALPHATESTENABLE, TRUE);		// アルファテストを有効
 
 	g_aRStateInfo[D3DRS_ALPHATESTENABLE].type = D3DRS_ALPHATESTENABLE;
-	g_aRStateInfo[D3DRS_ALPHATESTENABLE].value = TRUE;
+	g_aRStateInfo[D3DRS_ALPHATESTENABLE].dwValue = TRUE;
 
-	pDevice->SetRenderState(D3DRS_ALPHAFUNC, funcType);			// 基準値よりも大きい場合にZバッファに書き込み
+	pDevice->SetRenderState(D3DRS_ALPHAFUNC, alphaFunc);			// 基準値よりも大きい場合にZバッファに書き込み
 
 	g_aRStateInfo[D3DRS_ALPHAFUNC].type = D3DRS_ALPHAFUNC;
-	g_aRStateInfo[D3DRS_ALPHAFUNC].value = funcType;
+	g_aRStateInfo[D3DRS_ALPHAFUNC].dwValue = alphaFunc;
 
-	pDevice->SetRenderState(D3DRS_ALPHAREF, value);				// 基準値
+	pDevice->SetRenderState(D3DRS_ALPHAREF, dwAlphaRef);				// 基準値
 
 	g_aRStateInfo[D3DRS_ALPHAREF].type = D3DRS_ALPHAREF;
-	g_aRStateInfo[D3DRS_ALPHAREF].value = value;
+	g_aRStateInfo[D3DRS_ALPHAREF].dwValue = dwAlphaRef;
 }
 
-//==================================================================
+//==================================================================================
 // --- レンダーステート設定終了処理 ---
-//==================================================================
+//==================================================================================
 void EndFunction(void)
 {
 	LPDIRECT3DDEVICE9 pDevice = GetDevice();
 
-	if (g_aRStateInfo[D3DRS_ALPHATESTENABLE].value == TRUE)
+	if (g_aRStateInfo[D3DRS_ALPHATESTENABLE].dwValue == TRUE)
 	{
 		/*** アルファテストを無効にする ***/
 		pDevice->SetRenderState(D3DRS_ALPHATESTENABLE, FALSE);		// アルファテストを無効化
 
-		g_aRStateInfo[D3DRS_ALPHATESTENABLE].value = FALSE;
+		g_aRStateInfo[D3DRS_ALPHATESTENABLE].dwValue = FALSE;
 
 		pDevice->SetRenderState(D3DRS_ALPHAFUNC, D3DCMP_ALWAYS);	// 無条件にZバッファに書き込み
 
-		g_aRStateInfo[D3DRS_ALPHAFUNC].value = D3DCMP_ALWAYS;
+		g_aRStateInfo[D3DRS_ALPHAFUNC].dwValue = D3DCMP_ALWAYS;
 
 		pDevice->SetRenderState(D3DRS_ALPHAREF, 0);					// 基準値
 
-		g_aRStateInfo[D3DRS_ALPHAREF].value = 0;
+		g_aRStateInfo[D3DRS_ALPHAREF].dwValue = 0;
 	}
 
-	if (g_aRStateInfo[D3DRS_ZWRITEENABLE].value == FALSE)
+	if (g_aRStateInfo[D3DRS_ZWRITEENABLE].dwValue == FALSE)
 	{
 		/*** Zテストを有効にする ***/
 		pDevice->SetRenderState(D3DRS_ZFUNC, D3DCMP_LESSEQUAL);
 
-		g_aRStateInfo[D3DRS_ZFUNC].value = D3DCMP_LESSEQUAL;
+		g_aRStateInfo[D3DRS_ZFUNC].dwValue = D3DCMP_LESSEQUAL;
 
 		pDevice->SetRenderState(D3DRS_ZWRITEENABLE, TRUE);
 
-		g_aRStateInfo[D3DRS_ZWRITEENABLE].value = TRUE;
+		g_aRStateInfo[D3DRS_ZWRITEENABLE].dwValue = TRUE;
 	}
 }
 
-//==================================================================
+//==================================================================================
 // --- パス指定の絶対アドレス確認処理 ---
-//==================================================================
+//==================================================================================
 bool CheckPath(_In_ const char *pFileName)
 {
 #ifndef _PATHCHECK_NO_WARNINGS
 	if (strstr(pFileName, "C:") != NULL)
 	{
-		GenerateMessageBox(MB_ICONWARNING, 
-			"Warnings!", 
+		GenerateMessageBox(MB_ICONWARNING,
+			"Warnings!",
 			"アドレスが絶対パスの可能性があります。\n相対パスに切り替えてください。\n\n対象パス : %s",
 			pFileName);
 
@@ -812,405 +776,33 @@ bool CheckPath(_In_ const char *pFileName)
 	return false;
 }
 
-//==================================================================
-// --- 書式付き文字列設定処理 ---
-//==================================================================
-char *UniteChar(char* pOut, const char* fmt, ...)
-{
-	va_list ap;
-	va_start(ap, fmt);
-	const char* p1;
-	char aStr[256] = {};
-	char aStrEnd[256] = {};
-	char aStrOut[1024] = {};
-	int n = 0;
-	int nc = 0;
-	int d = 0;
-	float f = 0.0f;
-
-	int nCnt = 0;
-
-	for (const char* p = fmt; *p != '\0'; p++, n++, nc++)
-	{
-		if (*p == '%')
-		{
-			p++;
-			n++;
-
-			switch (*p)
-			{
-			case 'd':
-
-				nc += sprintf(&aStr[0], "%d", va_arg(ap, int));
-
-				/*** 文字列を結合 ***/
-				strcat(aStrEnd, &aStr[0]);
-
-				break;
-
-			case 'f':
-
-				f = va_arg(ap, double);
-				nc += sprintf(&aStr[0], "%f", f);
-
-				/*** 文字列を結合 ***/
-				strcat(aStrEnd, &aStr[0]);
-
-				break;
-
-			case 'c':
-
-				nc += sprintf(&aStr[0], "%c", va_arg(ap, char));
-
-				/*** 文字列を結合 ***/
-				strcat(aStrEnd, &aStr[0]);
-
-				break;
-
-			case 's':
-				p1 = va_arg(ap, const char*);
-				nc += sprintf(&aStr[0], "%s", p1);
-
-				/*** 文字列を結合 ***/
-				strcat(aStrEnd, &aStr[0]);
-
-				break;
-
-			case 'b':
-				nc += sprintf(&aStr[0], "%d", va_arg(ap, bool));
-
-				/*** 文字列を結合 ***/
-				strcat(aStrEnd, &aStr[0]);
-
-				break;
-
-			case '~':
-
-				p++;
-				n++;
-
-				sprintf(&aStr[0], "%c", *p);
-
-				nCnt = atoi(&aStr[0]);
-
-				p++;
-				n++;
-
-				switch (*p)
-				{
-				case 'd':
-
-					for (int nCntPrint = 0; nCntPrint < nCnt; nCntPrint++)
-					{
-						memset(aStr, 0, sizeof aStr);
-
-						nc += sprintf(&aStr[0], "%d ", va_arg(ap, int));
-
-						/*** 文字列を結合 ***/
-						strcat(aStrEnd, &aStr[0]);
-					}
-
-					break;
-
-				case 'f':
-
-					for (int nCntPrint = 0; nCntPrint < nCnt; nCntPrint++)
-					{
-						memset(aStr, 0, sizeof aStr);
-
-						f = va_arg(ap, double);
-						nc += sprintf(&aStr[0], "%f ", f);
-
-						/*** 文字列を結合 ***/
-						strcat(aStrEnd, &aStr[0]);
-					}
-
-					break;
-
-				case 'c':
-
-					for (int nCntPrint = 0; nCntPrint < nCnt; nCntPrint++)
-					{
-						memset(aStr, 0, sizeof aStr);
-
-						nc += sprintf(&aStr[0], "%c ", va_arg(ap, char));
-
-						/*** 文字列を結合 ***/
-						strcat(aStrEnd, &aStr[0]);
-					}
-
-					break;
-
-				case 's':
-
-					for (int nCntPrint = 0; nCntPrint < nCnt; nCntPrint++)
-					{
-						memset(aStr, 0, sizeof aStr);
-
-						p1 = va_arg(ap, const char*);
-						nc += sprintf(&aStr[0], "%s ", p1);
-
-						/*** 文字列を結合 ***/
-						strcat(aStrEnd, &aStr[0]);
-					}
-
-					break;
-
-				case 'b':
-
-					for (int nCntPrint = 0; nCntPrint < nCnt; nCntPrint++)
-					{
-						memset(aStr, 0, sizeof aStr);
-
-						nc += sprintf(&aStr[0], "%d ", va_arg(ap, bool));
-
-						/*** 文字列を結合 ***/
-						strcat(aStrEnd, &aStr[0]);
-					}
-
-					break;
-
-				default:
-
-					break;
-				}
-
-				break;
-
-			default:
-
-				break;
-			}
-		}
-		else
-		{
-			/*** 文字列を結合 ***/
-			sprintf(&aStr[0], "%c", *p);
-			//strncpy(&aStrCopy[0], &aStr2[n], 1);
-
-			strcat(&aStrEnd[0], &aStr[0]);
-		}
-
-		memset(aStr, 0, sizeof aStr);
-	}
-
-	/*** クリーンアップ ***/
-	va_end(ap);
-
-	aStrEnd[nc + 1] = '\0';
-
-	/*** 文字列を結合 ***/
-	strcat(&aStrOut[0], aStrEnd);
-
-	strcpy(pOut, &aStrOut[0]);
-
-	return &aStrOut[0];
-}
-
-//==================================================================
-// --- 書式付きメッセージボックス表示処理 ---
-//==================================================================
-void GenerateMessageBox(_In_ UINT nType, _In_ const char* pCaption, _In_ const char* fmt, ...)
+//==================================================================================
+// --- 書式付きメッセージボックス表示処理 (Debugビルドのみ表示) ---
+// ※ 書式は printf と同じ (%d / %s など)
+//==================================================================================
+void GenerateMessageBox(_In_ UINT nType, _In_ const char *pCaption, _In_ const char *fmt, ...)
 {
 #ifdef _DEBUG
-	HWND hWnd = GetHandleWindow();
+	HWND hWnd = GetHandleWindow();		// 親ウィンドウ
 	if (hWnd == NULL)
 	{
 		return;
 	}
 
-	va_list ap;
-	va_start(ap, fmt);
-	const char* p1;
-	char aStr[256] = {};
-	char aStrEnd[256] = {};
-	char aStrOut[1024] = {};
-	int n = 0;
-	int nc = 0;
-	int d = 0;
-	float f = 0.0f;
+	char aMessage[STRING_MAX] = {};		// 表示する文字列
+	va_list args;						// 可変長引数
 
-	int nCnt = 0;
+	va_start(args, fmt);
+	_vsnprintf(aMessage, sizeof aMessage - 1, fmt, args);
+	va_end(args);
 
-	for (const char* p = fmt; *p != '\0'; p++, n++, nc++)
-	{
-		if (*p == '%')
-		{
-			p++;
-			n++;
-
-			switch (*p)
-			{
-			case 'd':
-
-				nc += sprintf(&aStr[0], "%d", va_arg(ap, int));
-
-				/*** 文字列を結合 ***/
-				strcat(aStrEnd, &aStr[0]);
-
-				break;
-
-			case 'f':
-
-				f = va_arg(ap, double);
-				nc += sprintf(&aStr[0], "%f", f);
-
-				/*** 文字列を結合 ***/
-				strcat(aStrEnd, &aStr[0]);
-
-				break;
-
-			case 'c':
-
-				nc += sprintf(&aStr[0], "%c", va_arg(ap, char));
-
-				/*** 文字列を結合 ***/
-				strcat(aStrEnd, &aStr[0]);
-
-				break;
-
-			case 's':
-				p1 = va_arg(ap, const char*);
-				nc += sprintf(&aStr[0], "%s", p1);
-
-				/*** 文字列を結合 ***/
-				strcat(aStrEnd, &aStr[0]);
-
-				break;
-
-			case 'b':
-				nc += sprintf(&aStr[0], "%d", va_arg(ap, bool));
-
-				/*** 文字列を結合 ***/
-				strcat(aStrEnd, &aStr[0]);
-
-				break;
-
-			case '~':
-
-				p++;
-				n++;
-
-				sprintf(&aStr[0], "%c", *p);
-
-				nCnt = atoi(&aStr[0]);
-
-				p++;
-				n++;
-
-				switch (*p)
-				{
-				case 'd':
-
-					for (int nCntPrint = 0; nCntPrint < nCnt; nCntPrint++)
-					{
-						memset(aStr, 0, sizeof aStr);
-
-						nc += sprintf(&aStr[0], "%d ", va_arg(ap, int));
-
-						/*** 文字列を結合 ***/
-						strcat(aStrEnd, &aStr[0]);
-					}
-
-					break;
-
-				case 'f':
-
-					for (int nCntPrint = 0; nCntPrint < nCnt; nCntPrint++)
-					{
-						memset(aStr, 0, sizeof aStr);
-
-						f = va_arg(ap, double);
-						nc += sprintf(&aStr[0], "%f ", f);
-
-						/*** 文字列を結合 ***/
-						strcat(aStrEnd, &aStr[0]);
-					}
-
-					break;
-
-				case 'c':
-
-					for (int nCntPrint = 0; nCntPrint < nCnt; nCntPrint++)
-					{
-						memset(aStr, 0, sizeof aStr);
-
-						nc += sprintf(&aStr[0], "%c ", va_arg(ap, char));
-
-						/*** 文字列を結合 ***/
-						strcat(aStrEnd, &aStr[0]);
-					}
-
-					break;
-
-				case 's':
-
-					for (int nCntPrint = 0; nCntPrint < nCnt; nCntPrint++)
-					{
-						memset(aStr, 0, sizeof aStr);
-
-						p1 = va_arg(ap, const char*);
-						nc += sprintf(&aStr[0], "%s ", p1);
-
-						/*** 文字列を結合 ***/
-						strcat(aStrEnd, &aStr[0]);
-					}
-
-					break;
-
-				case 'b':
-
-					for (int nCntPrint = 0; nCntPrint < nCnt; nCntPrint++)
-					{
-						memset(aStr, 0, sizeof aStr);
-
-						nc += sprintf(&aStr[0], "%d ", va_arg(ap, bool));
-
-						/*** 文字列を結合 ***/
-						strcat(aStrEnd, &aStr[0]);
-					}
-
-					break;
-
-				default:
-
-					break;
-				}
-
-				break;
-
-			default:
-
-				break;
-			}
-		}
-		else
-		{
-			/*** 文字列を結合 ***/
-			sprintf(&aStr[0], "%c", *p);
-			//strncpy(&aStrCopy[0], &aStr2[n], 1);
-
-			strcat(&aStrEnd[0], &aStr[0]);
-		}
-
-		memset(aStr, 0, sizeof aStr);
-	}
-
-	/*** クリーンアップ ***/
-	va_end(ap);
-
-	aStrEnd[nc + 1] = '\0';
-
-	/*** 文字列を結合 ***/
-	strcat(&aStrOut[0], aStrEnd);
-
-	MessageBox(hWnd, &aStrOut[0], pCaption, nType);
+	MessageBox(hWnd, aMessage, pCaption, nType);
 #endif
 }
 
-//==================================================================
+//==================================================================================
 // --- カリングタイプ設定処理 ---
-//==================================================================
+//==================================================================================
 void SetCullingType(D3DCULL type)
 {
 	LPDIRECT3DDEVICE9 pDevice = GetDevice();

@@ -9,13 +9,19 @@ SCRIPT		# 消すな
 #=================================================
 # 読み込むテクスチャファイル数
 #=================================================
-NUM_TEXTURE = 2
+NUM_TEXTURE = 8
 
 #=================================================
 # テクスチャパス
 #=================================================
-TEXTURE_FILENAME = data/TEXTURE/field000.jpg		# [0]地面テクスチャ
-TEXTURE_FILENAME = data/TEXTURE/sky000.jpg			# [1]ソラ
+TEXTURE_FILENAME = data/TEXTURE/field000.jpg			# [0]地面テクスチャ
+TEXTURE_FILENAME = data/TEXTURE/sky000.jpg				# [1]ソラ
+TEXTURE_FILENAME = data/TEXTURE/UI/Ranking_UI.png		# [2]ランキングテクスチャ
+TEXTURE_FILENAME = data/TEXTURE/UI/Ranking_First.png	# [3]ランキング1位
+TEXTURE_FILENAME = data/TEXTURE/UI/Ranking_Second.png	# [4]ランキング2位
+TEXTURE_FILENAME = data/TEXTURE/UI/Ranking_Third.png	# [5]ランキング3位
+TEXTURE_FILENAME = data/TEXTURE/UI/Ranking_Fourth.png	# [6]ランキング4位
+TEXTURE_FILENAME = data/TEXTURE/UI/Ranking_Fifth.png	# [7]ランキング5位
 
 #=================================================
 # 読み込むモデル数

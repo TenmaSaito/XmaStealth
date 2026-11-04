@@ -9,25 +9,32 @@ SCRIPT		# 消すな
 #=================================================
 # 読み込むテクスチャファイル数
 #=================================================
-NUM_TEXTURE = 9
+NUM_TEXTURE = 16
 
 #=================================================
 # テクスチャパス
 #=================================================
-TEXTURE_FILENAME = data/TEXTURE/field000.jpg		# [0]地面テクスチャ
-TEXTURE_FILENAME = data/TEXTURE/explosion000.png	# [1]爆発アニメーションテクスチャ
-TEXTURE_FILENAME = data/TEXTURE/shadow000.jpg		# [2]エフェクト兼影テクスチャ
-TEXTURE_FILENAME = data/TEXTURE/flooring000.jpg		# [3]フローリングテクスチャ
-TEXTURE_FILENAME = data/TEXTURE/HouseWall000.jpg	# [4]家の壁テクスチャ
-TEXTURE_FILENAME = data/TEXTURE/ChildWall000.jpg	# [5]子供壁テクスチャ
-TEXTURE_FILENAME = data/TEXTURE/Carpet.jpg			# [6]カーペットテクスチャ
-TEXTURE_FILENAME = data/TEXTURE/sky000.jpg			# [7]ソラ
-TEXTURE_FILENAME = data/TEXTURE/gradation000.jpg	# [8]グラデーション
+TEXTURE_FILENAME = data/TEXTURE/field000.jpg			# [0]地面テクスチャ
+TEXTURE_FILENAME = data/TEXTURE/explosion000.png		# [1]爆発アニメーションテクスチャ
+TEXTURE_FILENAME = data/TEXTURE/shadow000.jpg			# [2]エフェクト兼影テクスチャ
+TEXTURE_FILENAME = data/TEXTURE/flooring000.jpg			# [3]フローリングテクスチャ
+TEXTURE_FILENAME = data/TEXTURE/HouseWall000.jpg		# [4]家の壁テクスチャ
+TEXTURE_FILENAME = data/TEXTURE/ChildWall000.jpg		# [5]子供壁テクスチャ
+TEXTURE_FILENAME = data/TEXTURE/Carpet.jpg				# [6]カーペットテクスチャ
+TEXTURE_FILENAME = data/TEXTURE/sky000.jpg				# [7]ソラ
+TEXTURE_FILENAME = data/TEXTURE/gradation100.jpg		# [8]グラデーション
+TEXTURE_FILENAME = data/TEXTURE/UI/Ornament_Num.jpg		# [9]オーナメント数
+TEXTURE_FILENAME = data/TEXTURE/UI/Trash_Num.jpg		# [10]ゴミ数
+TEXTURE_FILENAME = data/TEXTURE/UI/Ranking_UI.png		# [11]ランキングUI
+TEXTURE_FILENAME = data/TEXTURE/Number003.png			# [12]数字
+TEXTURE_FILENAME = data/TEXTURE/UI/Score.png			# [13]スコア表示
+TEXTURE_FILENAME = data/TEXTURE/UI/Timer.png			# [14]タイマー表示
+TEXTURE_FILENAME = data/TEXTURE/UI/bear_State.png		# [15]クマの状態
 
 #=================================================
 # 読み込むモデル数
 #================================================
-NUM_MODEL = 34
+NUM_MODEL = 38
 
 #=================================================
 # Xファイルのパス
@@ -62,10 +69,14 @@ MODEL_FILENAME = data/MODEL/Object/cafe_table.x						# [26] カフェテリア風机
 MODEL_FILENAME = data/MODEL/Object/Ornaments/Ornament_Star.x		# [27] ツリーの一番上にあるあの、あれさ。☆☆。
 MODEL_FILENAME = data/MODEL/Object/Ornaments/Ornament_cane.x		# [28] 何か飴の杖みたいなやつ
 MODEL_FILENAME = data/MODEL/Object/Ornaments/cookie.x				# [29] 美味しそうなジンジャークッキー
-MODEL_FILENAME = data/MODEL/Object/Ornaments/ornament_snowCrystal.x		# [33] 雪の結晶的なね。めっちゃ頑張った
-MODEL_FILENAME = data/MODEL/Object/Ornaments/ornament_snowman.x			# [34] 雪だるまつくーろー
-MODEL_FILENAME = data/MODEL/Object/Ornaments/ornament_santa's_hat.x		# [35] サンタの帽子です。はい。
-MODEL_FILENAME = data/MODEL/Object/Ornaments/ornament_ring.x			# [36] この時期なるとドア前によくかかってるあれ
+MODEL_FILENAME = data/MODEL/Object/Ornaments/ornament_snowCrystal.x		# [30] 雪の結晶的なね。めっちゃ頑張った
+MODEL_FILENAME = data/MODEL/Object/Ornaments/ornament_snowman.x			# [31] 雪だるまつくーろー
+MODEL_FILENAME = data/MODEL/Object/Ornaments/ornament_santa's_hat.x		# [32] サンタの帽子です。はい。
+MODEL_FILENAME = data/MODEL/Object/Ornaments/ornament_ring.x		# [33] ring
+MODEL_FILENAME = data/MODEL/Object/Ornaments/trash_can.x			# [34] 缶
+MODEL_FILENAME = data/MODEL/Object/Ornaments/trash_cokecola.x		# [35] ペットボトル
+MODEL_FILENAME = data/MODEL/Object/Ornaments/trash_potato.x			# [36] ポテトチップス
+MODEL_FILENAME = data/MODEL/Object/Fence.x					# [37] 柵
 
 #=================================================
 # オーナメント用の詳細設定
@@ -77,35 +88,35 @@ ORNAMENTSET
 	ORNAMENT
 		ISSTAR = 1		# スターか (0 = FALSE / 1 = TRUE / 2 = TRASH)
 		TYPE = 27		# モデル番号
-		RADIUS = 5.0	# 当たり判定の半径
+		RADIUS = 4.0	# 当たり判定の半径
 		WEIGHT = 50.0	# オーナメントの重量
 	END_ORNAMENT
 
 	ORNAMENT
 		ISSTAR = 0		# スターか (0 = FALSE / 1 = TRUE / 2 = TRASH)
 		TYPE = 25		# モデル番号
-		RADIUS = 5.0	# 当たり判定の半径
+		RADIUS = 3.0	# 当たり判定の半径
 		WEIGHT = 10.0	# オーナメントの重量
 	END_ORNAMENT
 
 	ORNAMENT
 		ISSTAR = 0		# スターか (0 = FALSE / 1 = TRUE / 2 = TRASH)
 		TYPE = 9		# モデル番号
-		RADIUS = 5.0	# 当たり判定の半径
+		RADIUS = 3.0	# 当たり判定の半径
 		WEIGHT = 5.0	# オーナメントの重量
 	END_ORNAMENT
 
 	ORNAMENT
 		ISSTAR = 0		# スターか (0 = FALSE / 1 = TRUE / 2 = TRASH)
 		TYPE = 28		# モデル番号
-		RADIUS = 5.0	# 当たり判定の半径
+		RADIUS = 3.0	# 当たり判定の半径
 		WEIGHT = 6.0	# オーナメントの重量
 	END_ORNAMENT
 
 	ORNAMENT
 		ISSTAR = 0		# スターか (0 = FALSE / 1 = TRUE / 2 = TRASH)
 		TYPE = 29		# モデル番号
-		RADIUS = 5.0	# 当たり判定の半径
+		RADIUS = 3.0	# 当たり判定の半径
 		WEIGHT = 6.0	# オーナメントの重量
 	END_ORNAMENT
 
@@ -115,23 +126,23 @@ ORNAMENTSET
 		RADIUS = 2.0	# 当たり判定の半径
 		WEIGHT = 3.0	# オーナメントの重量
 	END_ORNAMENT
-
+	
 	ORNAMENT
-		ISSTAR = 0		# スターか (0 = FALSE / 1 = TRUE / 2 = TRASH)
+		ISSTAR = 2		# スターか (0 = FALSE / 1 = TRUE / 2 = TRASH)
 		TYPE = 34		# モデル番号
 		RADIUS = 2.0	# 当たり判定の半径
 		WEIGHT = 3.0	# オーナメントの重量
 	END_ORNAMENT
-
+	
 	ORNAMENT
-		ISSTAR = 0		# スターか (0 = FALSE / 1 = TRUE / 2 = TRASH)
+		ISSTAR = 2		# スターか (0 = FALSE / 1 = TRUE / 2 = TRASH)
 		TYPE = 35		# モデル番号
 		RADIUS = 2.0	# 当たり判定の半径
 		WEIGHT = 3.0	# オーナメントの重量
 	END_ORNAMENT
-
+	
 	ORNAMENT
-		ISSTAR = 0		# スターか (0 = FALSE / 1 = TRUE / 2 = TRASH)
+		ISSTAR = 2		# スターか (0 = FALSE / 1 = TRUE / 2 = TRASH)
 		TYPE = 36		# モデル番号
 		RADIUS = 2.0	# 当たり判定の半径
 		WEIGHT = 3.0	# オーナメントの重量
@@ -180,7 +191,7 @@ END_EXPLOSIONSET
 #=================================================
 FIELDSET
 	TEXTYPE = 0
-	POS = 0 -1 0
+	POS = 0 -2 0
 	ROT = 0 0 0
 	BLOCK = 100 100
 	SIZE = 50 50
@@ -213,26 +224,15 @@ FIELDSET
 END_FIELDSET
 
 #-------------------------------------------------
-# 玄関
-#-------------------------------------------------
-FIELDSET
-	TEXTYPE = 3
-	POS = 200 0 -750
-	ROT = 0 0 0
-	BLOCK = 8 10
-	SIZE = 50 50
-END_FIELDSET
-
-#-------------------------------------------------
 # 階段
 #-------------------------------------------------
 MESHFIELDSET
 	TEXTYPE = 3
-	POS = 38 61 -50
-	ROT = 331 0 0
-	SIZE = 60 408
-	BLOCK = 20 20
-	CULL = 1
+	POS = 38 65 -51
+	ROT = 330 0 0
+	SIZE = 59 420
+	BLOCK = 20 19
+	CULL = 0
 END_MESHFIELDSET
 
 #=================================================
@@ -243,11 +243,11 @@ END_MESHFIELDSET
 #-------------------------------------------------
 FIELDSET
 	TEXTYPE = 3
-	POS = -175 187 -107
+	POS = -179 187 -107
 	ROT = 0 0 0
 	BLOCK = 9 12
 	SIZE = 51 50
-	CULL = 1
+	CULL = 2
 END_FIELDSET
 
 FIELDSET
@@ -256,17 +256,62 @@ FIELDSET
 	ROT = 0 0 0
 	BLOCK = 4 30
 	SIZE = 13 10
-	CULL = 1
+	CULL = 2
 END_FIELDSET
 
 FIELDSET
 	TEXTYPE = 3
-	POS = 76 187 120
+	POS = 76 187 122
 	ROT = 0 0 0
-	BLOCK = 4 4
-	SIZE = 13 35
-	CULL = 1
+	BLOCK = 4 142
+	SIZE = 13 1
+	CULL = 2
 END_FIELDSET
+
+#-------------------------------------------------
+# リビング
+#-------------------------------------------------
+FIELDSET
+	TEXTYPE = 3
+	POS = -179 199 -107
+	ROT = 0 0 0
+	BLOCK = 9 12
+	SIZE = 51 50
+END_FIELDSET
+
+FIELDSET
+	TEXTYPE = 3
+	POS = 76 199 -250
+	ROT = 0 0 0
+	BLOCK = 4 30
+	SIZE = 13 10
+END_FIELDSET
+
+WALLSET
+	TEXTYPE = 4
+	POS = 76 187 -100
+	ROT = 0 180 0
+	BLOCK = 4 1
+	COL = 1.0 1.0 0.0 1.0
+	SIZE = 13 12
+END_WALLSET
+
+FIELDSET
+	TEXTYPE = 3
+	POS = 76 199 122
+	ROT = 0 0 0
+	BLOCK = 4 142
+	SIZE = 13 1
+END_FIELDSET
+
+WALLSET
+	TEXTYPE = 4
+	POS = -150 187 193
+	ROT = 0 180 0
+	COL = 1.0 1.0 0.0 1.0
+	BLOCK = 10 1
+	SIZE = 50 12
+END_WALLSET
 
 #=================================================
 # カーペット
@@ -326,22 +371,53 @@ END_WALLSET
 # 階段側面 ----
 WALLSET
 	TEXTYPE = 4
-	POS = 45 0 -107
+	POS = 44 0 -116
 	ROT = 0 90 0
 	COL = 1.0 1.0 0.0 1.0
 	BLOCK = 1 1
-	SIZE = 334 188
+	SIZE = 350 198
 	CULL = 1
 END_WALLSET
 
 # 階段側面 ----
 WALLSET
 	TEXTYPE = 4
-	POS = 52 0 -107
+	POS = 50 0 -116
 	ROT = 0 270 0
 	COL = 1.0 1.0 0.0 1.0
 	BLOCK = 1 1
-	SIZE = 334 188
+	SIZE = 350 198
+	CULL = 1
+END_WALLSET
+
+WALLSET
+	TEXTYPE = 4
+	POS = 47 0 -290
+	ROT = 0 0 0
+	COL = 1.0 1.0 0.0 1.0
+	BLOCK = 1 1
+	SIZE = 6 198
+	CULL = 1
+END_WALLSET
+
+WALLSET
+	TEXTYPE = 4
+	POS = 47 0 58
+	ROT = 0 180 0
+	COL = 1.0 1.0 0.0 1.0
+	BLOCK = 1 1
+	SIZE = 6 198
+	CULL = 1
+END_WALLSET
+
+# 階段側面 ----
+WALLSET
+	TEXTYPE = 4
+	POS = 75 0 57
+	ROT = 0 180 0
+	COL = 1.0 1.0 0.0 1.0
+	BLOCK = 1 1
+	SIZE = 53 198
 	CULL = 1
 END_WALLSET
 
@@ -394,6 +470,7 @@ MODELSET
 	INDEX = 1
 	POS = -260 0 -200
 	ROT = 0 0 0
+	COLLISION = 2
 END_MODELSET
 
 # 冷蔵庫 ----
@@ -410,6 +487,7 @@ MODELSET
 	INDEX = 1
 	POS = -250 0 -375
 	ROT = 0 180 0
+	COLLISION = 2
 END_MODELSET
 
 # リビング =====================================
@@ -534,7 +612,7 @@ END_MODELSET
 MODELSET
 	TYPE = 18
 	INDEX = 1
-	POS = 75 0 0
+	POS = 75 0 210
 	ROT = 0 90 0
 	COLLISION = 2
 END_MODELSET
@@ -543,7 +621,7 @@ END_MODELSET
 MODELSET
 	TYPE = 18
 	INDEX = 1
-	POS = 75 0 100
+	POS = 75 0 110
 	ROT = 0 90 0
 	COLLISION = 2
 END_MODELSET
@@ -552,7 +630,7 @@ END_MODELSET
 MODELSET
 	TYPE = 26
 	INDEX = 1
-	POS = 45 0 50
+	POS = 45 0 150
 	ROT = 0 90 0
 	COLLISION = 2
 END_MODELSET
@@ -563,6 +641,7 @@ MODELSET
 	INDEX = 1
 	POS = 80 108 100
 	ROT = 0 90 0
+	COLLISION = 2
 END_MODELSET
 
 # リビングの照明 ----
@@ -579,6 +658,79 @@ XMASTREESET
 	POS = 0 0 300
 	ROT = 0 0 0
 END_XMASTREESET
+
+# ソファー ----
+MODELSET
+	TYPE = 10
+	INDEX = 1
+	POS = -280 199 -370
+	ROT = 0 180 0
+	COLLISION = 2
+END_MODELSET
+
+# 本棚用机 ----
+MODELSET
+	TYPE = 26
+	INDEX = 1
+	POS = -280 199 -340
+	ROT = 0 90 0
+	COLLISION = 2
+END_MODELSET
+
+# 本棚 ----
+MODELSET
+	TYPE = 18
+	INDEX = 1
+	POS = -370 199 -300
+	ROT = 0 270 0
+	COLLISION = 2
+END_MODELSET
+
+# 本棚 ----
+MODELSET
+	TYPE = 18
+	INDEX = 1
+	POS = -370 199 -180
+	ROT = 0 270 0
+	COLLISION = 2
+END_MODELSET
+
+# テレビ台 ----
+MODELSET
+	TYPE = 11
+	INDEX = 1
+	POS = -280 199 30
+	ROT = 0 0 0
+	COLLISION = 2
+END_MODELSET
+
+# テレビ ----
+MODELSET
+	TYPE = 17
+	INDEX = 1
+	POS = -280 227 30
+	ROT = 0 0 0
+	COLLISION = 2
+END_MODELSET
+
+# クローゼット ----
+MODELSET
+	TYPE = 1
+	INDEX = 1
+	POS = 0 199 -370
+	ROT = 0 180 0
+	COLLISION = 2
+END_MODELSET
+
+
+# 柵 ----
+MODELSET
+	TYPE = 37
+	INDEX = 1
+	POS = -150 199 180
+	ROT = 0 0 0
+	COLLISION = 2
+END_MODELSET
 
 # 子供部屋 ======================================
 
@@ -633,14 +785,6 @@ MODELSET
 	POS = 225 0 475
 	ROT = 0 0 0
 	COLLISION = 2
-END_MODELSET
-
-# 子供部屋の照明 ----
-MODELSET
-	TYPE = 21
-	INDEX = 1
-	POS = 300 185 425
-	ROT = 0 0 0
 END_MODELSET
 
 #=================================================

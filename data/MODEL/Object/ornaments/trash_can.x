@@ -1100,7 +1100,7 @@ Mesh {
    0.800000;0.800000;0.800000;;
    0.200000;0.200000;0.200000;;
    TextureFilename {
-    "data\\TEXTURE\\can_texture.png";
+    "data\\TEXTURE\\can_texture.jpg";
    }
   }
  }

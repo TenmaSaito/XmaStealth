@@ -1,19 +1,18 @@
-//=============================================================================
+//==================================================================================
 //
 // サウンド処理 [sound.cpp]
 // Author : TENMA SAITO (SPACIAL THANKS : AKIRA TANAKA)
 //
-//=============================================================================
+//==================================================================================
 #include "sound.h"
 #include "camera.h"
 #include "fade.h"
 #include "game.h"
+#include "debugproc.h"
 
-//#define _3DAUDIO
-
-//*****************************************************************************
-// サウンド情報の構造体定義
-//*****************************************************************************
+//**********************************************************************************
+// *** サウンド情報の構造体定義 ***
+//**********************************************************************************
 typedef struct
 {
 	const char *pFilename;		// ファイル名
@@ -24,52 +23,60 @@ typedef struct
 	bool b3D;					// 立体音響を適用するか
 } SOUNDINFO;
 
-//*****************************************************************************
-// プロトタイプ宣言
-//*****************************************************************************
-HRESULT CheckChunk(HANDLE hFile, DWORD format, DWORD *pChunkSize, DWORD *pChunkDataPosition);
-HRESULT ReadChunkData(HANDLE hFile, void *pBuffer, DWORD dwBuffersize, DWORD dwBufferoffset);
+//**********************************************************************************
+// *** プロトタイプ宣言 ***
+//**********************************************************************************
+static HRESULT CheckChunk(HANDLE hFile, DWORD format, DWORD *pChunkSize, DWORD *pChunkDataPosition);
+static HRESULT ReadChunkData(HANDLE hFile, void *pBuffer, DWORD dwBuffersize, DWORD dwBufferoffset);
 
-//*****************************************************************************
-// グローバル変数
-//*****************************************************************************
-IXAudio2 *g_pXAudio2 = NULL;								// XAudio2オブジェクトへのインターフェイス
-IXAudio2MasteringVoice *g_pMasteringVoice = NULL;			// マスターボイス
-IXAudio2SourceVoice *g_apSourceVoice[SOUND_LABEL_MAX] = {};	// ソースボイス
-XAUDIO2_VOICE_DETAILS g_MasterVoiceDetails = {};						// マスターボイスの音声情報
-XAUDIO2_VOICE_DETAILS g_aSourceVoiceDetails[SOUND_LABEL_MAX] = {};		// ソースボイスの音声情報
-BYTE *g_apDataAudio[SOUND_LABEL_MAX] = {};					// オーディオデータ
-DWORD g_aSizeAudio[SOUND_LABEL_MAX] = {};					// オーディオデータサイズ
-bool g_aPlayAudio[SOUND_LABEL_MAX] = {};					// 再生状況
-float g_fVolumeAudio;										// 現在の音量
-SOUND_LABEL g_PlaySound;									// 再生中の音源
-SOUND_LABEL	g_FadelabelExac;								// フェードアウト時に再生されている音源
-SOUND_LABEL g_Fadelabel;									// フェードイン時に再生する音源
-FADE g_CurrentFadeSound;									// 現在のフェード状態
-int g_nCounterSound;										// 汎用カウンター
+//**********************************************************************************
+// *** グローバル変数 ***
+//**********************************************************************************
+static IXAudio2 *g_pXAudio2 = NULL;								// XAudio2オブジェクトへのインターフェイス
+static IXAudio2MasteringVoice *g_pMasteringVoice = NULL;			// マスターボイス
+static IXAudio2SourceVoice *g_apSourceVoice[SOUND_LABEL_MAX] = {};	// ソースボイス
+static SoundChecker g_sc;
+static XAUDIO2_VOICE_DETAILS g_MasterVoiceDetails = {};						// マスターボイスの音声情報
+static XAUDIO2_VOICE_DETAILS g_aSourceVoiceDetails[SOUND_LABEL_MAX] = {};		// ソースボイスの音声情報
+static BYTE *g_apDataAudio[SOUND_LABEL_MAX] = {};					// オーディオデータ
+static DWORD g_aSizeAudio[SOUND_LABEL_MAX] = {};					// オーディオデータサイズ
+static bool g_aPlayAudio[SOUND_LABEL_MAX] = {};					// 再生状況
+static float g_fVolumeAudio;										// 現在の音量
+static SOUND_LABEL g_PlaySound;									// 再生中の音源
+static SOUND_LABEL	g_FadelabelExac;								// フェードアウト時に再生されている音源
+static SOUND_LABEL g_Fadelabel;									// フェードイン時に再生する音源
+static FADE g_CurrentFadeSound;									// 現在のフェード状態
+static int g_nCounterSound;										// 汎用カウンター
 
-XAUDIO2_DEVICE_DETAILS g_xa2_details;						// デバイスのオーディオ取得
-X3DAUDIO_HANDLE g_X3DInstance = {};							// X3DAudioのハンドル
-X3DAUDIO_DSP_SETTINGS g_DSPSettings = {};					// DSP設定
-X3DAUDIO_LISTENER g_Listener;								// リスナー
-X3DAUDIO_EMITTER g_aEmitter[SOUND_LABEL_MAX];				// エミッター
-XAUDIO2_BUFFER g_aSubmixBuffer[SOUND_LABEL_MAX] = {};
-WAVEFORMATEX g_wfxSource[SOUND_LABEL_MAX] = {};
+static XAUDIO2_DEVICE_DETAILS g_xa2_details;						// デバイスのオーディオ取得
+static X3DAUDIO_HANDLE g_X3DInstance = {};							// X3DAudioのハンドル
+static X3DAUDIO_DSP_SETTINGS g_DSPSettings = {};					// DSP設定
+static X3DAUDIO_LISTENER g_Listener;								// リスナー
+static X3DAUDIO_EMITTER g_aEmitter[SOUND_LABEL_MAX];				// エミッター
+static XAUDIO2_BUFFER g_aSubmixBuffer[SOUND_LABEL_MAX] = {};
+static WAVEFORMATEX g_wfxSource[SOUND_LABEL_MAX] = {};
 
 // サウンドの情報(sound.hのLABELに追加したらここにも追加する！)
-SOUNDINFO g_aSoundInfo[SOUND_LABEL_MAX] =
+static SOUNDINFO g_aSoundInfo[SOUND_LABEL_MAX] =
 {
-	{"data/BGM/BGM_TITLE_TEST.wav", -1, D3DXVECTOR3_NULL, D3DXVECTOR3_NULL, D3DXVECTOR3_NULL, false},		// タイトル画面のBGM
-	{"data/BGM/BGM_TITLE_TEST.wav", -1, D3DXVECTOR3_NULL, D3DXVECTOR3_NULL, D3DXVECTOR3_NULL, false},		// タイトル画面のBGM
-	{"data/BGM/BGM_TITLE_TEST.wav", -1, D3DXVECTOR3_NULL, D3DXVECTOR3_NULL, D3DXVECTOR3_NULL, false},		// タイトル画面のBGM
-	{"data/BGM/BGM_TITLE_TEST.wav", -1, D3DXVECTOR3_NULL, D3DXVECTOR3_NULL, D3DXVECTOR3_NULL, false},		// タイトル画面のBGM
-	{"data/BGM/BGM_CHILL.wav", -1, D3DXVECTOR3_NULL, D3DXVECTOR3_NULL, D3DXVECTOR3_NULL, false},		// タイトル画面のBGM
-	{"data/SE/SE_ENTER.wav", 0, D3DXVECTOR3_NULL, D3DXVECTOR3_NULL, D3DXVECTOR3_NULL, false},		// 決定音
+	{"data/BGM/BGM_TITLE.wav", 0, D3DXVECTOR3_NULL, D3DXVECTOR3_NULL, D3DXVECTOR3_NULL, false},		// タイトル画面のBGM
+	{"data/BGM/BGM_TUTORIAL.wav", -1, D3DXVECTOR3_NULL, D3DXVECTOR3_NULL, D3DXVECTOR3_NULL, false},		// チュートリアル画面のBGM
+	{"data/BGM/BGM_GAME.wav", -1, D3DXVECTOR3_NULL, D3DXVECTOR3_NULL, D3DXVECTOR3_NULL, false},			// ゲーム画面のBGM
+	{"data/BGM/BGM_GAMECLEAR.wav", -1, D3DXVECTOR3_NULL, D3DXVECTOR3_NULL, D3DXVECTOR3_NULL, false},	// クリア画面のBGM
+	{"data/BGM/BGM_GAMEOVER.wav", -1, D3DXVECTOR3_NULL, D3DXVECTOR3_NULL, D3DXVECTOR3_NULL, false},		// ゲームオーバー画面のBGM
+	{"data/BGM/BGM_RANKING.wav", -1, D3DXVECTOR3_NULL, D3DXVECTOR3_NULL, D3DXVECTOR3_NULL, false},		// ランキング画面のBGM
+	{"data/SE/SE_ENTER.wav", 0, D3DXVECTOR3_NULL, D3DXVECTOR3_NULL, D3DXVECTOR3_NULL, false},			// 決定音
+	{"data/SE/SE_SELECT.wav", 0, D3DXVECTOR3_NULL, D3DXVECTOR3_NULL, D3DXVECTOR3_NULL, false},			// セレクト音
+	{"data/SE/SE_WALK.wav", 0, D3DXVECTOR3_NULL, D3DXVECTOR3_NULL, D3DXVECTOR3_NULL, false},			// 歩行音
+	{"data/SE/SE_JUMP.wav", -1, D3DXVECTOR3_NULL, D3DXVECTOR3_NULL, D3DXVECTOR3_NULL, false},			// ジャンプ音
+	{"data/SE/SE_SHOT.wav", 0, D3DXVECTOR3_NULL, D3DXVECTOR3_NULL, D3DXVECTOR3_NULL, false},			// 投擲音
+	{"data/SE/SE_FIND.wav", 0, D3DXVECTOR3_NULL, D3DXVECTOR3_NULL, D3DXVECTOR3_NULL, false},			// 取得音
+	{"data/SE/SE_CATCH.wav", 0, D3DXVECTOR3_NULL, D3DXVECTOR3_NULL, D3DXVECTOR3_NULL, false},			// 衝突音
 };
 
-//=============================================================================
-// 初期化処理
-//=============================================================================
+//==================================================================================
+// --- 初期化処理 ---
+//==================================================================================
 HRESULT InitSound(HWND hWnd)
 {
 	HRESULT hr;
@@ -94,7 +101,7 @@ HRESULT InitSound(HWND hWnd)
 
 		return E_FAIL;
 	}
-	
+
 	// マスターボイスの生成
 	hr = g_pXAudio2->CreateMasteringVoice(&g_pMasteringVoice);
 	if(FAILED(hr))
@@ -143,7 +150,7 @@ HRESULT InitSound(HWND hWnd)
 
 			return HRESULT_FROM_WIN32(GetLastError());
 		}
-	
+
 		// WAVEファイルのチェック
 		hr = CheckChunk(hFile, 'FFIR', &dwChunkSize, &dwChunkPosition);
 		if(FAILED(hr))
@@ -168,7 +175,7 @@ HRESULT InitSound(HWND hWnd)
 
 			return S_FALSE;
 		}
-	
+
 		// フォーマットチェック
 		hr = CheckChunk(hFile, ' tmf', &dwChunkSize, &dwChunkPosition);
 		if(FAILED(hr))
@@ -205,9 +212,18 @@ HRESULT InitSound(HWND hWnd)
 
 			return S_FALSE;
 		}
-	
-		// ソースボイスの生成
-		hr = g_pXAudio2->CreateSourceVoice(&g_apSourceVoice[nCntSound], &(wfx.Format));
+
+		if (nCntSound == SOUND_LABEL_SE_JUMP)
+		{
+			// ソースボイスの生成
+			hr = g_pXAudio2->CreateSourceVoice(&g_apSourceVoice[nCntSound], &(wfx.Format), 0, XAUDIO2_DEFAULT_FREQ_RATIO, &g_sc);
+		}
+		else
+		{
+			// ソースボイスの生成
+			hr = g_pXAudio2->CreateSourceVoice(&g_apSourceVoice[nCntSound], &(wfx.Format));
+		}
+
 		if(FAILED(hr))
 		{
 			MessageBox(hWnd, "ソースボイスの生成に失敗！", "警告！", MB_ICONWARNING);
@@ -217,7 +233,7 @@ HRESULT InitSound(HWND hWnd)
 
 		// バッファの値設定
 		memset(&buffer, 0, sizeof(XAUDIO2_BUFFER));
-		memset(g_aSourceVoiceDetails, 0, sizeof(XAUDIO2_VOICE_DETAILS));
+		memset(&g_aSourceVoiceDetails[nCntSound], 0, sizeof(XAUDIO2_VOICE_DETAILS));
 		buffer.AudioBytes = g_aSizeAudio[nCntSound];
 		buffer.pAudioData = g_apDataAudio[nCntSound];
 		buffer.Flags      = XAUDIO2_END_OF_STREAM;
@@ -309,9 +325,9 @@ HRESULT InitSound(HWND hWnd)
 	return S_OK;
 }
 
-//=============================================================================
-// 終了処理
-//=============================================================================
+//==================================================================================
+// --- 終了処理 ---
+//==================================================================================
 void UninitSound(void)
 {
 	// 一時停止
@@ -321,23 +337,23 @@ void UninitSound(void)
 		{
 			// 一時停止
 			g_apSourceVoice[nCntSound]->Stop(0);
-	
+
 			// ソースボイスの破棄
 			g_apSourceVoice[nCntSound]->DestroyVoice();
 			g_apSourceVoice[nCntSound] = NULL;
 			g_aSourceVoiceDetails[nCntSound] = {};
-	
+
 			// オーディオデータの開放
 			free(g_apDataAudio[nCntSound]);
 			g_apDataAudio[nCntSound] = NULL;
 		}
 	}
-	
+
 	// マスターボイスの破棄
 	g_pMasteringVoice->DestroyVoice();
 	g_pMasteringVoice = NULL;
 	g_MasterVoiceDetails = {};
-	
+
 	if(g_pXAudio2 != NULL)
 	{
 		// XAudio2オブジェクトの開放
@@ -349,14 +365,16 @@ void UninitSound(void)
 	CoUninitialize();
 }
 
-//=============================================================================
-// 更新処理
-//=============================================================================
+//==================================================================================
+// --- 更新処理 ---
+//==================================================================================
 void UpdateSound(void)
 {
 	Camera *pCamera = GetCamera();
 	X3DAUDIO_CONE ListenerCone = {};
-	
+
+	PrintDebugProc("IsPlaying %d\n", g_sc.IsPlayingSound());
+
 #ifdef _3DAUDIO
 	/*** 3Dオーディオ(立体音響の設定！) ***/
 	for (int nCntSound = 0; nCntSound < SOUND_LABEL_MAX; nCntSound++)
@@ -364,7 +382,7 @@ void UpdateSound(void)
 		if (g_aSoundInfo[nCntSound].b3D == true)
 		{
 			/*** 変数宣言 ***/
-			FLOAT32 matrix[16] = {};		// 8(or 16)にすると立体に聞こえる！
+			FLOAT32 matrix[8] = {};		// 8(or 16)にすると立体に聞こえる！
 			D3DXVECTOR3 vecFront;			// カメラの視点位置からの方向ベクトル
 			D3DXVECTOR3 vecFrontEmitter;	// 音源からの方向ベクトル
 
@@ -400,7 +418,7 @@ void UpdateSound(void)
 
 			/*** 聞き手の位置、方向、上方向ベクトルを設定 ***/
 			g_Listener.OrientFront = vecFront;
-			g_Listener.OrientTop = pCamera->vecU;
+			g_Listener.OrientTop = D3DXVECTOR3(0, 1, 0);
 			g_Listener.Position = pCamera->posV;
 			g_Listener.Velocity = SOUND_SPD;
 			g_Listener.pCone = &ListenerCone;
@@ -413,7 +431,7 @@ void UpdateSound(void)
 
 			/*** 音量計算に使用する初期値を設定 ***/
 			g_DSPSettings.SrcChannelCount = 1;				// Srcはモノラルの為、1に設定
-			g_DSPSettings.DstChannelCount = 16;				// Dstは立体に近づけるため、16に設定
+			g_DSPSettings.DstChannelCount = 8;				// Dstは立体に近づけるため、16に設定
 			g_DSPSettings.pMatrixCoefficients = &matrix[0];	// マトリックス用配列のアドレスを渡す
 
 			/*** 音量計算！DSPSettingsが計算結果 ***/
@@ -426,7 +444,7 @@ void UpdateSound(void)
 										   第2引数 : 音源のチャンネル数(モノラルの為1)
 										   第3引数 : 聞き手のチャンネル数(マトリックスの配列の数と同期)
 										   第4引数 : 計算結果のDSPSettingsのマトリックスへのポインタ) **/
-			g_apSourceVoice[nCntSound]->SetOutputMatrix(g_pMasteringVoice, 1, 16, g_DSPSettings.pMatrixCoefficients);
+			g_apSourceVoice[nCntSound]->SetOutputMatrix(g_pMasteringVoice, 1, 8, g_DSPSettings.pMatrixCoefficients);
 
 			/** ドップラー効果の反映...?(よくわかってない) **/
 			g_apSourceVoice[nCntSound]->SetFrequencyRatio(g_DSPSettings.DopplerFactor);
@@ -506,9 +524,9 @@ void UpdateSound(void)
 	}
 }
 
-//=============================================================================
-// セグメント再生(再生中なら停止)
-//=============================================================================
+//==================================================================================
+// --- セグメント再生(再生中なら停止) ---
+//==================================================================================
 HRESULT PlaySound(SOUND_LABEL label)
 {
 	XAUDIO2_VOICE_STATE xa2state;
@@ -557,9 +575,33 @@ HRESULT PlaySound(SOUND_LABEL label)
 	return S_OK;
 }
 
-//=============================================================================
-// セグメント再生(再生中なら停止)
-//=============================================================================
+//==================================================================================
+// --- セグメント取得 ---
+//==================================================================================
+bool GetSound(SOUND_LABEL label)
+{
+	XAUDIO2_VOICE_STATE xa2state;
+	bool bPlay = false;
+
+	if (label < 0 || label >= SOUND_LABEL_MAX)
+	{ // インデックス管理
+		return false;
+	}
+
+	// 状態取得
+	g_apSourceVoice[label]->GetState(&xa2state);
+	if (xa2state.BuffersQueued != 0)
+	{
+		bPlay = true;
+	}
+
+	// 再生状況を返す
+	return bPlay;
+}
+
+//==================================================================================
+// --- セグメント再生(再生中なら停止) ---
+//==================================================================================
 void Play3DSound(SOUND_LABEL label, D3DXVECTOR3 pos, D3DXVECTOR3 rot, D3DXVECTOR3 posU)
 {
 	XAUDIO2_VOICE_STATE xa2state;
@@ -609,9 +651,9 @@ void Play3DSound(SOUND_LABEL label, D3DXVECTOR3 pos, D3DXVECTOR3 rot, D3DXVECTOR
 	g_aSoundInfo[label].b3D = true;
 }
 
-//=============================================================================
-// セグメント停止(ラベル指定)
-//=============================================================================
+//==================================================================================
+// --- セグメント停止(ラベル指定) ---
+//==================================================================================
 void StopSound(SOUND_LABEL label)
 {
 	XAUDIO2_VOICE_STATE xa2state;
@@ -631,9 +673,9 @@ void StopSound(SOUND_LABEL label)
 	}
 }
 
-//=============================================================================
-// セグメント停止(全て)
-//=============================================================================
+//==================================================================================
+// --- セグメント停止(全て) ---
+//==================================================================================
 void StopSound(void)
 {
 	// 一時停止
@@ -649,10 +691,10 @@ void StopSound(void)
 	}
 }
 
-//=============================================================================
-// チャンクのチェック
-//=============================================================================
-HRESULT CheckChunk(HANDLE hFile, DWORD format, DWORD *pChunkSize, DWORD *pChunkDataPosition)
+//==================================================================================
+// --- チャンクのチェック ---
+//==================================================================================
+static HRESULT CheckChunk(HANDLE hFile, DWORD format, DWORD *pChunkSize, DWORD *pChunkDataPosition)
 {
 	HRESULT hr = S_OK;
 	DWORD dwRead;
@@ -662,12 +704,12 @@ HRESULT CheckChunk(HANDLE hFile, DWORD format, DWORD *pChunkSize, DWORD *pChunkD
 	DWORD dwFileType;
 	DWORD dwBytesRead = 0;
 	DWORD dwOffset = 0;
-	
+
 	if(SetFilePointer(hFile, 0, NULL, FILE_BEGIN) == INVALID_SET_FILE_POINTER)
 	{// ファイルポインタを先頭に移動
 		return HRESULT_FROM_WIN32(GetLastError());
 	}
-	
+
 	while(hr == S_OK)
 	{
 		if(ReadFile(hFile, &dwChunkType, sizeof(DWORD), &dwRead, NULL) == 0)
@@ -713,17 +755,17 @@ HRESULT CheckChunk(HANDLE hFile, DWORD format, DWORD *pChunkSize, DWORD *pChunkD
 			return S_FALSE;
 		}
 	}
-	
+
 	return S_OK;
 }
 
-//=============================================================================
-// チャンクデータの読み込み
-//=============================================================================
-HRESULT ReadChunkData(HANDLE hFile, void *pBuffer, DWORD dwBuffersize, DWORD dwBufferoffset)
+//==================================================================================
+// --- チャンクデータの読み込み ---
+//==================================================================================
+static HRESULT ReadChunkData(HANDLE hFile, void *pBuffer, DWORD dwBuffersize, DWORD dwBufferoffset)
 {
 	DWORD dwRead;
-	
+
 	if(SetFilePointer(hFile, dwBufferoffset, NULL, FILE_BEGIN) == INVALID_SET_FILE_POINTER)
 	{// ファイルポインタを指定位置まで移動
 		return HRESULT_FROM_WIN32(GetLastError());
@@ -733,14 +775,14 @@ HRESULT ReadChunkData(HANDLE hFile, void *pBuffer, DWORD dwBuffersize, DWORD dwB
 	{// データの読み込み
 		return HRESULT_FROM_WIN32(GetLastError());
 	}
-	
+
 	return S_OK;
 }
 
-//=============================================================================
-// 音量の設定
-//=============================================================================
-void SetVolume(float volume, SETSOUND sound)
+//==================================================================================
+// --- 音量の設定 ---
+//==================================================================================
+void SetVolume(float fVolume, SETSOUND sound)
 {
 	switch (sound)
 	{
@@ -752,7 +794,7 @@ void SetVolume(float volume, SETSOUND sound)
 			if (g_apSourceVoice[nCntSound] != NULL)
 			{
 				// 音量を設定
-				g_apSourceVoice[nCntSound]->SetVolume(volume, XAUDIO2_COMMIT_NOW);
+				g_apSourceVoice[nCntSound]->SetVolume(fVolume, XAUDIO2_COMMIT_NOW);
 			}
 		}
 
@@ -762,12 +804,12 @@ void SetVolume(float volume, SETSOUND sound)
 		break;
 	}
 
-	g_fVolumeAudio = volume;
+	g_fVolumeAudio = fVolume;
 }
 
-//=============================================================================
-// 音量の取得
-//=============================================================================
+//==================================================================================
+// --- 音量の取得 ---
+//==================================================================================
 float GetVolume(SETSOUND sound)
 {
 	float fVolume = 0.0f;
@@ -776,13 +818,13 @@ float GetVolume(SETSOUND sound)
 	{
 		g_apSourceVoice[SOUND_BGMSTART]->GetVolume(&fVolume);
 	}
-	
+
 	return fVolume;
 }
 
-//=============================================================================
-// 音楽のフェード処理
-//=============================================================================
+//==================================================================================
+// --- 音楽のフェード処理 ---
+//==================================================================================
 void FadeSound(SOUND_LABEL label)
 {
 	g_CurrentFadeSound = FADE_OUT;			// フェードアウト状態に
@@ -790,9 +832,9 @@ void FadeSound(SOUND_LABEL label)
 	g_FadelabelExac = g_PlaySound;			// フェードアウト時のBGMを取得
 }
 
-//=============================================================================
-// 現在再生中のBGMの取得
-//=============================================================================
+//==================================================================================
+// --- 現在再生中のBGMの取得 ---
+//==================================================================================
 SOUND_LABEL GetPlaySound(void)
 {
 	return g_PlaySound;

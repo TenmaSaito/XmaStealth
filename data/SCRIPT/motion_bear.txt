@@ -28,7 +28,7 @@ MODEL_FILENAME = data/MODEL/bear/06_hand_collision.x	# [6]当たり判定用
 CHARACTERSET
 	NUM_PARTS = 7					# パーツ数
 	MOVE = 1.2						# 移動量
-	JUMP = 12.0						# 跳躍力
+	JUMP = 11.0						# 跳躍力
 	RADIUS = 3.0					# 当たり半径
 	HEIGHT = 28.0					# 頭
 	HEAD = 1						# 頭のインデックス

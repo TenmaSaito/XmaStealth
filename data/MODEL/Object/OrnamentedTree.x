@@ -8170,7 +8170,7 @@ Mesh {
    0.800000;0.800000;0.800000;;
    0.200000;0.196078;0.192941;;
    TextureFilename {
-    "C:\\Users\\student\\Desktop\\3DGame\\Direct3D_CameraSytem\\data\\TEXTURE\\present_box.jpg";
+    "data\\TEXTURE\\present_box.jpg";
    }
   }
   Material {
